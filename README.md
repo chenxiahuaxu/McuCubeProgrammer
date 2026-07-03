@@ -2,12 +2,24 @@
 
 > 一个 `pip install`，任意 Cortex-M 芯片，三种桌面系统 — 开源跨平台 MCU 烧录 GUI
 
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-77%20passed-brightgreen)]()
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)]()
+<p align="center">
+  <a href="https://github.com/chenxiahuaxu/McuCubeProgrammer/stargazers"><img src="https://img.shields.io/github/stars/chenxiahuaxu/McuCubeProgrammer?style=flat-square&color=yellow" alt="Stars"></a>
+  <a href="https://github.com/chenxiahuaxu/McuCubeProgrammer/network/members"><img src="https://img.shields.io/github/forks/chenxiahuaxu/McuCubeProgrammer?style=flat-square" alt="Forks"></a>
+  <a href="https://github.com/chenxiahuaxu/McuCubeProgrammer/issues"><img src="https://img.shields.io/github/issues/chenxiahuaxu/McuCubeProgrammer?style=flat-square" alt="Issues"></a>
+  <a href="https://github.com/chenxiahuaxu/McuCubeProgrammer/pulse"><img src="https://img.shields.io/github/last-commit/chenxiahuaxu/McuCubeProgrammer?style=flat-square" alt="Last Commit"></a>
+  <br>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/chenxiahuaxu/McuCubeProgrammer?style=flat-square&color=blue" alt="License"></a>
+  <img src="https://img.shields.io/badge/python-3.9%2B-blue?style=flat-square" alt="Python">
+  <img src="https://img.shields.io/badge/tests-77%20passed-brightgreen?style=flat-square" alt="Tests">
+  <img src="https://img.shields.io/badge/platform-Win%20%7C%20Mac%20%7C%20Linux-lightgrey?style=flat-square" alt="Platform">
+  <br>
+  <a href="https://github.com/chenxiahuaxu/McuCubeProgrammer"><img src="https://img.shields.io/github/repo-size/chenxiahuaxu/McuCubeProgrammer?style=flat-square" alt="Repo Size"></a>
+  <a href="https://github.com/chenxiahuaxu/McuCubeProgrammer/graphs/contributors"><img src="https://img.shields.io/github/contributors/chenxiahuaxu/McuCubeProgrammer?style=flat-square" alt="Contributors"></a>
+  <img src="https://img.shields.io/github/commit-activity/m/chenxiahuaxu/McuCubeProgrammer?style=flat-square" alt="Commit Activity">
+  <img src="https://img.shields.io/github/languages/top/chenxiahuaxu/McuCubeProgrammer?style=flat-square" alt="Top Language">
+</p>
 
-> **当前版本：v0.0.1**
+> **当前版本：v0.1.0**
 
 ---
 
@@ -33,6 +45,31 @@
 | **上手难度** | 低 | 中 | 高 | 中 | 低 |
 
 > **核心差异：** MCU Cube Programmer 是唯一的同时满足「现代 GUI + 开源 + 多厂商 + 跨平台」的 MCU 烧录工具。
+
+---
+
+## 项目数据
+
+| 指标 | 数值 | 说明 |
+|---|---|---|
+| ⭐ Stars | [![Stars](https://img.shields.io/github/stars/chenxiahuaxu/McuCubeProgrammer?style=flat-square)](https://github.com/chenxiahuaxu/McuCubeProgrammer/stargazers) | GitHub 星标数（实时） |
+| 🔀 Forks | [![Forks](https://img.shields.io/github/forks/chenxiahuaxu/McuCubeProgrammer?style=flat-square)](https://github.com/chenxiahuaxu/McuCubeProgrammer/network) | 社区 fork 数 |
+| 📦 安装体积 | **~300 KB** | `pip install` 下载量（不含 pyOCD） |
+| 📦 全量安装 | **~15 MB** | 含 pyOCD + pyusb 等依赖 |
+| 🔌 探针支持 | **3 类** | ST-Link / CMSIS-DAP(含 DAPLink) / J-Link |
+| 🧠 芯片支持 | **600+ 款** | 内置目标 + CMSIS-Pack 扩展可达全部 Cortex-M |
+| 📄 格式支持 | **4 种** | `.bin` / `.hex` / `.elf` / `.axf` |
+| 🧪 测试覆盖 | **77 项** | pytest 全通过（backend / logic / utils） |
+| 📝 源代码 | **~2,400 行** | 纯 Python，不含测试和文档 |
+| 🧵 架构分层 | **4 层** | UI → Logic → Backend → Utils |
+| 🪟 平台 | **3 桌面 + Web** | Windows / macOS / Linux + 浏览器 |
+| 🐍 Python | **3.9+** | 无 C 扩展，纯 pip 安装 |
+| 📜 许可证 | **Apache 2.0** | 完全开源，商用友好 |
+
+<!--
+  注：Stars/Forks/Issues 等 badge 由 shields.io 从 GitHub API 实时拉取，
+  无需手动更新。Commit Activity 为近一个月平均。
+-->
 
 ---
 
