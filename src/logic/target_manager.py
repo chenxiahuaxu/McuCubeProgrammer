@@ -6,6 +6,8 @@
   - Pack 安装（pyocd pack install）
 """
 
+from __future__ import annotations
+
 import re
 import subprocess
 

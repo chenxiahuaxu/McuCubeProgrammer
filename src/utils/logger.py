@@ -6,6 +6,8 @@
 日志级别: INFO / WARN / ERROR / DONE / DEBUG
 """
 
+from __future__ import annotations
+
 import threading
 from collections.abc import Callable
 from datetime import datetime

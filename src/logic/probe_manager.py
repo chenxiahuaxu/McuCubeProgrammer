@@ -6,6 +6,8 @@
   - 强制刷新
 """
 
+from __future__ import annotations
+
 from src.backend.interface import BackendABC, ProbeInfo
 from src.utils.logger import add_log
 
