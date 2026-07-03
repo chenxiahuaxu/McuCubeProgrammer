@@ -288,16 +288,16 @@ class FlashController:
                 from elftools.elf.elffile import ELFFile
                 with open(file_path, "rb") as f:
                     elf = ELFFile(f)
-                lo, hi = None, None
-                for seg in elf.iter_segments():
-                    ptype = str(seg.header.get("p_type", ""))
-                    if ptype == "PT_LOAD" and seg.header.get("p_filesz", 0) > 0:
-                        vaddr = seg.header.get("p_vaddr", 0)
-                        fsize = seg.header.get("p_filesz", 0)
-                        lo = min(lo, vaddr) if lo is not None else vaddr
-                        hi = max(hi, vaddr + fsize) if hi is not None else vaddr + fsize
-                if lo is not None and hi is not None:
-                    return lo, hi
+                    lo, hi = None, None
+                    for seg in elf.iter_segments():
+                        ptype = str(seg.header.get("p_type", ""))
+                        if ptype == "PT_LOAD" and seg.header.get("p_filesz", 0) > 0:
+                            vaddr = seg.header.get("p_vaddr", 0)
+                            fsize = seg.header.get("p_filesz", 0)
+                            lo = min(lo, vaddr) if lo is not None else vaddr
+                            hi = max(hi, vaddr + fsize) if hi is not None else vaddr + fsize
+                    if lo is not None and hi is not None:
+                        return lo, hi
             except Exception as e:
                 _log.getLogger(__name__).warning("ELF 解析失败: %s", e)
         return 0, 0
