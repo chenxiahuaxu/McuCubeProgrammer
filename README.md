@@ -8,15 +8,15 @@
   <a href="https://github.com/chenxiahuaxu/McuCubeProgrammer/issues"><img src="https://img.shields.io/github/issues/chenxiahuaxu/McuCubeProgrammer?style=flat-square" alt="Issues"></a>
   <a href="https://github.com/chenxiahuaxu/McuCubeProgrammer/pulse"><img src="https://img.shields.io/github/last-commit/chenxiahuaxu/McuCubeProgrammer?style=flat-square" alt="Last Commit"></a>
   <br>
+  <a href="https://github.com/chenxiahuaxu/McuCubeProgrammer/releases"><img src="https://img.shields.io/github/downloads/chenxiahuaxu/McuCubeProgrammer/total?style=flat-square&label=downloads" alt="Downloads"></a>
+  <a href="https://github.com/chenxiahuaxu/McuCubeProgrammer/issues?q=is%3Aissue+is%3Aclosed"><img src="https://img.shields.io/github/issues-closed/chenxiahuaxu/McuCubeProgrammer?style=flat-square&label=issues%20closed" alt="Issues Closed"></a>
+  <a href="https://github.com/chenxiahuaxu/McuCubeProgrammer/pulls?q=is%3Apr+is%3Aclosed"><img src="https://img.shields.io/github/issues-pr-closed/chenxiahuaxu/McuCubeProgrammer?style=flat-square&label=prs%20closed" alt="PRs Closed"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/chenxiahuaxu/McuCubeProgrammer?style=flat-square&color=blue" alt="License"></a>
+  <br>
   <img src="https://img.shields.io/badge/python-3.9%2B-blue?style=flat-square" alt="Python">
   <img src="https://img.shields.io/badge/tests-77%20passed-brightgreen?style=flat-square" alt="Tests">
   <img src="https://img.shields.io/badge/platform-Win%20%7C%20Mac%20%7C%20Linux-lightgrey?style=flat-square" alt="Platform">
-  <br>
-  <a href="https://github.com/chenxiahuaxu/McuCubeProgrammer"><img src="https://img.shields.io/github/repo-size/chenxiahuaxu/McuCubeProgrammer?style=flat-square" alt="Repo Size"></a>
-  <a href="https://github.com/chenxiahuaxu/McuCubeProgrammer/graphs/contributors"><img src="https://img.shields.io/github/contributors/chenxiahuaxu/McuCubeProgrammer?style=flat-square" alt="Contributors"></a>
-  <img src="https://img.shields.io/github/commit-activity/m/chenxiahuaxu/McuCubeProgrammer?style=flat-square" alt="Commit Activity">
-  <img src="https://img.shields.io/github/languages/top/chenxiahuaxu/McuCubeProgrammer?style=flat-square" alt="Top Language">
+  <img src="https://img.shields.io/github/repo-size/chenxiahuaxu/McuCubeProgrammer?style=flat-square" alt="Repo Size">
 </p>
 
 > **当前版本：v0.1.0**
@@ -54,8 +54,12 @@
 |---|---|---|
 | ⭐ Stars | [![Stars](https://img.shields.io/github/stars/chenxiahuaxu/McuCubeProgrammer?style=flat-square)](https://github.com/chenxiahuaxu/McuCubeProgrammer/stargazers) | GitHub 星标数（实时） |
 | 🔀 Forks | [![Forks](https://img.shields.io/github/forks/chenxiahuaxu/McuCubeProgrammer?style=flat-square)](https://github.com/chenxiahuaxu/McuCubeProgrammer/network) | 社区 fork 数 |
-| 📦 安装体积 | **~300 KB** | `pip install` 下载量（不含 pyOCD） |
+| 📥 Release 下载 | [![Downloads](https://img.shields.io/github/downloads/chenxiahuaxu/McuCubeProgrammer/total?style=flat-square&label=)](https://github.com/chenxiahuaxu/McuCubeProgrammer/releases) | Release 附件总下载次数 |
+| ✅ Issues 关闭 | [![Issues Closed](https://img.shields.io/github/issues-closed/chenxiahuaxu/McuCubeProgrammer?style=flat-square&label=)](https://github.com/chenxiahuaxu/McuCubeProgrammer/issues?q=is%3Aissue+is%3Aclosed) | 已关闭 issue 数 |
+| 🔁 PRs 关闭 | [![PRs Closed](https://img.shields.io/github/issues-pr-closed/chenxiahuaxu/McuCubeProgrammer?style=flat-square&label=)](https://github.com/chenxiahuaxu/McuCubeProgrammer/pulls?q=is%3Apr+is%3Aclosed) | 已合并/关闭 PR 数 |
+| 📦 安装体积 | **~300 KB** | 源码下载（不含 pyOCD） |
 | 📦 全量安装 | **~15 MB** | 含 pyOCD + pyusb 等依赖 |
+| 📊 pip 安装 | `pip install mcu-cube-programmer` | PyPI 发布后生效，当前仅供源码安装 |
 | 🔌 探针支持 | **3 类** | ST-Link / CMSIS-DAP(含 DAPLink) / J-Link |
 | 🧠 芯片支持 | **600+ 款** | 内置目标 + CMSIS-Pack 扩展可达全部 Cortex-M |
 | 📄 格式支持 | **4 种** | `.bin` / `.hex` / `.elf` / `.axf` |
