@@ -25,6 +25,7 @@ logging.getLogger("pyocd").setLevel(logging.ERROR)
 try:
     from pyocd.debug.svd import parser as _svd_parser
     import xml.etree.ElementTree as ET
+    import io
 
     def _patched_for_xml_file(path, remove_reserved=True):
         if isinstance(path, str):
@@ -40,7 +41,7 @@ try:
         idx = raw.find(b"<")
         if idx > 0:
             raw = raw[idx:]
-        return _svd_parser.SVDParser(ET.ElementTree(ET.fromstring(raw)), remove_reserved)
+        return _svd_parser.SVDParser(ET.parse(io.BytesIO(raw)), remove_reserved)
 
     _svd_parser.SVDParser.for_xml_file = staticmethod(_patched_for_xml_file)
 except Exception:
