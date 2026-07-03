@@ -17,6 +17,8 @@
 pyOCD 内部的 program 进度 (0.0–1.0) 被映射到 0.15–0.90 区间。
 """
 
+from __future__ import annotations
+
 import asyncio
 import os
 import threading

@@ -26,7 +26,7 @@ CONFIG_PATH = _config_dir() / "config.json"
 
 def load() -> dict:
     try:
-        with open(CONFIG_PATH) as f:
+        with open(CONFIG_PATH, encoding="utf-8") as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
@@ -36,7 +36,7 @@ def save(data: dict) -> None:
     """合并写入：读取现有配置 → 合并新值 → 写入。"""
     d = load()
     d.update(data)
-    with open(CONFIG_PATH, "w") as f:
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(d, f, indent=2, ensure_ascii=False)
 
 
