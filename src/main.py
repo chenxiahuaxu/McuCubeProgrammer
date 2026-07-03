@@ -17,22 +17,32 @@ _project_root = Path(__file__).resolve().parent.parent
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
-# ── 抑制 pyOCD 噪音：Board ID / SVD / CoreSight ──
+# ── 抑制 pyOCD 噪音：Board ID / CoreSight ──
 import logging
 logging.getLogger("pyocd").setLevel(logging.ERROR)
 
-# SVD 加载失败不影响烧录，直接静默掉
+# SVD 文件 BOM 兼容修复
 try:
-    from pyocd.debug.svd.loader import SVDLoader
-    _orig_run = SVDLoader._Worker.run
+    from pyocd.debug.svd import parser as _svd_parser
+    import xml.etree.ElementTree as ET
 
-    def _safe_run(self):
-        try:
-            _orig_run(self)
-        except Exception:
-            pass
+    def _patched_for_xml_file(path, remove_reserved=True):
+        if isinstance(path, str):
+            with open(path, "rb") as f:
+                raw = f.read()
+        else:
+            try:
+                path.seek(0)
+            except Exception:
+                pass
+            raw = path.read()
+        # 跳过 BOM 或前置垃圾字节，找到 XML 声明
+        idx = raw.find(b"<")
+        if idx > 0:
+            raw = raw[idx:]
+        return _svd_parser.SVDParser(ET.fromstring(raw), remove_reserved)
 
-    SVDLoader._Worker.run = _safe_run
+    _svd_parser.SVDParser.for_xml_file = staticmethod(_patched_for_xml_file)
 except Exception:
     pass
 
