@@ -55,6 +55,9 @@ class FlashTask:
     erase_chip: bool = False
     """是否在烧录前执行全片擦除（默认否，使用扇区擦除）。"""
 
+    frequency: int = 200_000
+    """SWD/JTAG 调试时钟频率（Hz），默认 200 kHz。"""
+
     swv_config: dict | None = None
     """SWV 配置（system_clock, swo_clock）。"""
 
@@ -145,11 +148,23 @@ class FlashController:
 
             # ── 芯片信息 ──────────────────────────────
             fw_size = os.path.getsize(task.firmware_path)
+            ext: str = os.path.splitext(task.firmware_path)[1].lower()
+            is_addressed: bool = ext in (".hex", ".elf", ".axf")
+
+            # 实际烧录地址范围
+            if is_addressed:
+                addr_start, addr_end = self._parse_addr_range(task.firmware_path, ext)
+                effective_base = addr_start
+                effective_end = addr_end
+            else:
+                effective_base = task.base_address
+                effective_end = task.base_address + fw_size
+
             # 获取实际扇区大小（connect 后从后端读取）
             sector_size = 0
             try:
                 for r in self._backend.get_target_info().flash_regions:
-                    if r.start <= task.base_address < r.start + r.length:
+                    if r.start <= effective_base < r.start + r.length:
                         sector_size = r.sector_size
                         add_log("INFO", f"Flash: {r.length//1024} KB ({r.name}), 扇区 {r.sector_size//1024} KB")
                         break
@@ -157,10 +172,15 @@ class FlashController:
                 sector_size = 16 * 1024  # fallback
             if sector_size == 0:
                 sector_size = 16 * 1024
-            start_sector = task.base_address // sector_size
-            end_sector = (task.base_address + fw_size - 1) // sector_size
+            start_sector = effective_base // sector_size
+            end_sector = (effective_end - 1) // sector_size
             sector_count = end_sector - start_sector + 1
-            add_log("INFO", f"固件: {fw_size:,} 字节 ({fw_size/1024:.1f} KB), 地址 0x{task.base_address:08X}-0x{task.base_address+fw_size:08X}")
+
+            addr_range = f"0x{effective_base:08X}-0x{effective_end:08X}"
+            if is_addressed:
+                add_log("INFO", f"固件: {fw_size:,} 字节 ({fw_size/1024:.1f} KB), 地址 {addr_range}（从文件解析）")
+            else:
+                add_log("INFO", f"固件: {fw_size:,} 字节 ({fw_size/1024:.1f} KB), 地址 {addr_range}")
             add_log("INFO", f"擦除扇区 {start_sector}-{end_sector} ({sector_count}个, 各{sector_size//1024}KB)")
 
             if task.erase_chip:
@@ -181,7 +201,7 @@ class FlashController:
             )
             check_cancel()
             emit("program", 0.90, "固件烧录完成")
-            add_log("DONE", f"烧录完成: 扇区 {start_sector}-{end_sector}，地址 0x{task.base_address:08X}-0x{task.base_address+fw_size:08X}")
+            add_log("DONE", f"烧录完成: 扇区 {start_sector}-{end_sector}，地址 0x{effective_base:08X}-0x{effective_end:08X}")
 
             emit("verify", 0.90, "正在验证...")
             add_log("INFO", "正在验证 Flash...")
@@ -249,3 +269,31 @@ class FlashController:
             mapped: float = 0.15 + max(0.0, min(1.0, program_percent)) * 0.75
             emit("program", mapped, f"正在烧录... {program_percent * 100:.0f}%")
         return callback
+
+    @staticmethod
+    def _parse_addr_range(file_path: str, ext: str) -> tuple[int, int]:
+        """解析 .hex/.elf 文件的实际地址范围，用于日志显示。"""
+        if ext == ".hex":
+            try:
+                from intelhex import IntelHex
+                ih = IntelHex(file_path)
+                addrs = ih.addresses()
+                if addrs:
+                    return min(addrs), max(addrs) + 1
+            except Exception:
+                pass
+        elif ext in (".elf", ".axf"):
+            try:
+                from elftools.elf.elffile import ELFFile
+                with open(file_path, "rb") as f:
+                    elf = ELFFile(f)
+                lo, hi = None, None
+                for seg in elf.iter_segments():
+                    if seg.header.p_type == "PT_LOAD" and seg.header.p_filesz > 0:
+                        lo = min(lo, seg.header.p_vaddr) if lo else seg.header.p_vaddr
+                        hi = max(hi, seg.header.p_vaddr + seg.header.p_filesz) if hi else seg.header.p_vaddr + seg.header.p_filesz
+                if lo is not None and hi is not None:
+                    return lo, hi
+            except Exception:
+                pass
+        return 0, 0
