@@ -186,7 +186,7 @@ class BackendABC(ABC):
             target:     目标芯片标识符（pyOCD target name），例如 ``"stm32f407vg"``。
             probe_uid:  探针唯一 ID（来自 ``list_probes``）。
                         若为 None，自动选择第一个可用探针。
-            frequency:  SWD 时钟频率（Hz），默认 4 MHz。
+            frequency:  SWD 时钟频率（Hz），默认 200 kHz。
             pack_path:  自定义 CMSIS-Pack 文件路径。
                         若芯片不在 pyOCD 内置列表中，需提供此参数。
 

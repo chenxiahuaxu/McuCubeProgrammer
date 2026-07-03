@@ -38,7 +38,7 @@ from .interface import (
 
 _SUPPORTED_EXTENSIONS: tuple[str, ...] = (".bin", ".hex", ".elf", ".axf")
 _ADDRESSED_EXTENSIONS: tuple[str, ...] = (".hex", ".elf", ".axf")
-_DEFAULT_FREQUENCY: int = 1_000_000
+_DEFAULT_FREQUENCY: int = 200_000  # CMSIS-DAP 稳定值，避免 Unexpected ACK
 
 _log = logging.getLogger(__name__)
 
@@ -169,8 +169,9 @@ class PyOCDBackend(BackendABC):
         options: dict = {
             "target_override": target,
             "frequency": frequency,
-            "auto_unlock": True,
-            "reset_type": "hw",
+            "auto_unlock": False,
+            "reset_type": "default",
+            "connect_mode": "under-reset",
         }
 
         # SWV/SWO 配置（必须在 session.open() 前设置）
