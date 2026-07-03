@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 
 import flet as ft
 
@@ -53,6 +54,7 @@ class FlashTab:
         saved_base = cfg.get("base_address", "0x08000000")
         self._base_ref = ft.Ref[ft.TextField]()
         self._base_address: str = saved_base
+        self._base_address_locked: bool = False
 
         # ── 子组件 ──
         self.probe_selector = ProbeSelector(
@@ -118,6 +120,31 @@ class FlashTab:
 
     def _on_file_selected(self, path: str) -> None:
         self.log_view.add_log("INFO", f"已选择固件: {path}")
+        ext = os.path.splitext(path)[1].lower()
+        is_addressed = ext in (".hex", ".elf", ".axf")
+
+        if is_addressed:
+            # 从文件解析起始地址，锁定输入框
+            addr_start, _ = self.flash_controller._parse_addr_range(path, ext)
+            if addr_start > 0:
+                self._base_address = f"0x{addr_start:08X}"
+                self._base_address_locked = True
+                if self._base_ref.current:
+                    self._base_ref.current.value = self._base_address
+                    self._base_ref.current.read_only = True
+                    self._base_ref.current.helper_text = "从文件自动解析（不可修改）"
+                    self._base_ref.current.update()
+                self.log_view.add_log("INFO", f"从固件文件解析基地址: {self._base_address}")
+            else:
+                self._base_address_locked = False
+        else:
+            # .bin 文件 — 允许手动输入
+            self._base_address_locked = False
+            if self._base_ref.current:
+                self._base_ref.current.read_only = False
+                self._base_ref.current.helper_text = "手动输入烧录地址"
+                self._base_ref.current.update()
+
         self._save_selections()
 
     def _save_selections(self) -> None:
@@ -263,6 +290,7 @@ class FlashTab:
             value=self._base_address,
             width=200,
             text_size=13,
+            read_only=self._base_address_locked,
             on_change=on_change,
             hint_text="例如 0x0800C000",
             prefix_icon=ft.Icons.MEMORY,
