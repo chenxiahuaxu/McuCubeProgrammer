@@ -3,15 +3,24 @@
 ignored-modules=flet
 
 [MESSAGES CONTROL]
-# Disable noisy convention checks for test files
-# C0114: missing-module-docstring
-# C0115: missing-class-docstring
-# C0116: missing-function-docstring
-# These are enforced in src/ but not tests/
+# Disable checks that conflict with project conventions
 disable=
-    C0114,
-    C0115,
-    C0116,
+    C0114,  # missing-module-docstring
+    C0115,  # missing-class-docstring
+    C0116,  # missing-function-docstring
+    W0621,  # redefined-outer-name (pytest fixtures)
+    W0613,  # unused-argument (event handlers)
+    W0201,  # attribute-defined-outside-init (flet UI build pattern)
+    W0212,  # protected-access (tests + internal access)
+    W0718,  # broad-exception-caught (UI/top-level handlers)
+    W0106,  # expression-not-assigned (one-liner handlers)
+    W1510,  # subprocess-run-check (handled with try/except)
+    C0415,  # import-outside-toplevel (lazy imports)
+    R0903,  # too-few-public-methods (data/config classes)
+    R0801,  # duplicate-code (similar UI patterns)
+    R0913,  # too-many-arguments (component constructors)
+    R0917,  # too-many-positional-arguments (component constructors)
+    C0103,  # invalid-name (test constants)
 
 [FORMAT]
 max-line-length=100

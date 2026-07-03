@@ -8,6 +8,7 @@ MCU Cube Programmer — pyOCD 后端实现
 
 from __future__ import annotations
 
+import io
 import logging
 import os
 from collections.abc import Callable
@@ -22,7 +23,6 @@ from pyocd.core.memory_map import MemoryMap
 from pyocd.core import exceptions as pyocd_exc
 from pyocd.probe import debug_probe
 from pyocd.trace.swv import SWVReader
-import io
 
 from .error_codes import ErrorCode, BackendError
 from .interface import (
@@ -124,18 +124,17 @@ class PyOCDBackend(BackendABC):
 
     def swo_start_callback(self, sys_clock: int, swo_clock: int, callback) -> None:
         """启动 SWV + 回调式文本输出。"""
-        import io
         session = self._require_session()
 
         class _Cw(io.StringIO):
-            def __init__(s):
+            def __init__(self):
                 super().__init__()
-                s._buf = ""
+                self._buf = ""
 
-            def write(s, text):
-                s._buf += text
-                while "\n" in s._buf:
-                    line, s._buf = s._buf.split("\n", 1)
+            def write(self, text):
+                self._buf += text
+                while "\n" in self._buf:
+                    line, self._buf = self._buf.split("\n", 1)
                     line = "".join(c for c in line.strip() if c.isprintable() or c in "\t")
                     if line:
                         callback(line)
