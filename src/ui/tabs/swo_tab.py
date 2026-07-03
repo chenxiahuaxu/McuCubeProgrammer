@@ -28,14 +28,26 @@ class SwoTab:
         self._sysclk_ref = ft.Ref[ft.Dropdown]()
 
     def build(self) -> ft.Control:
-        self._switch = ft.Switch(ref=self._switch_ref, label="SWO 捕获", value=False, on_change=self._on_toggle)
-        self._sysclk = ft.Dropdown(ref=self._sysclk_ref, width=130, dense=True, value="168000000",
+        self._switch = ft.Switch(
+            ref=self._switch_ref, label="SWO 捕获", value=False, on_change=self._on_toggle
+        )
+        self._sysclk = ft.Dropdown(
+            ref=self._sysclk_ref, width=130, dense=True, value="168000000",
             options=[ft.dropdown.Option(v, f"{int(v)//1_000_000} MHz") for v in
-                     ["8000000","16000000","48000000","72000000","84000000","168000000","180000000","480000000"]],
-            bgcolor=Colors.BG_ELEVATED, border=ft.Border(*[ft.BorderSide(1,Colors.BORDER)]*4), border_radius=4)
-        self._baud = ft.Dropdown(ref=self._baud_ref, width=130, dense=True, value="400000",
-            options=[ft.dropdown.Option(v, f"{int(v)//1000} K") for v in ["200000","400000","1000000","2000000"]],
-            bgcolor=Colors.BG_ELEVATED, border=ft.Border(*[ft.BorderSide(1,Colors.BORDER)]*4), border_radius=4)
+                     ["8000000", "16000000", "48000000", "72000000", "84000000",
+                      "168000000", "180000000", "480000000"]],
+            bgcolor=Colors.BG_ELEVATED,
+            border=ft.Border(*[ft.BorderSide(1, Colors.BORDER)] * 4),
+            border_radius=4,
+        )
+        self._baud = ft.Dropdown(
+            ref=self._baud_ref, width=130, dense=True, value="400000",
+            options=[ft.dropdown.Option(v, f"{int(v)//1000} K") for v in
+                     ["200000", "400000", "1000000", "2000000"]],
+            bgcolor=Colors.BG_ELEVATED,
+            border=ft.Border(*[ft.BorderSide(1, Colors.BORDER)] * 4),
+            border_radius=4,
+        )
 
         return ft.Container(content=ft.Column(controls=[
             ft.Text("SWO 串行调试输出", size=Font.Size.HEADING, weight=500, color=Colors.TEXT_PRIMARY),
@@ -45,10 +57,15 @@ class SwoTab:
             standard_divider(), self.log_view.build()
         ], spacing=Spacing.SM, expand=True), padding=Spacing.XL, expand=True)
 
-    async def _on_toggle(self, e): (await self.start()) if e.control.value else (await self.stop())
+    async def _on_toggle(self, e):
+        if e.control.value:
+            await self.start()
+        else:
+            await self.stop()
 
     async def start(self) -> None:
-        if self._active: return
+        if self._active:
+            return
         try:
             sysclk = int(self._sysclk_ref.current.value or "168000000")
             swo_baud = int(self._baud_ref.current.value or "400000")
@@ -56,7 +73,9 @@ class SwoTab:
             t = self._target_mgr.get_selected_target()
             if not t:
                 self.log_view.add_log("ERROR", "请先在 Flash 选项卡中选择芯片")
-                self._switch_ref.current.value = False; self._switch_ref.current.update(); return
+                self._switch_ref.current.value = False
+                self._switch_ref.current.update()
+                return
             p = self._probe_mgr.get_selected_probe()
             self.log_view.add_log("INFO", f"正在连接: {t}")
             await asyncio.to_thread(self._backend.connect, t, p.unique_id if p else None, 1_000_000, None, swv)
@@ -64,10 +83,11 @@ class SwoTab:
                                     sysclk, swo_baud, self._on_swo_line)
             await asyncio.to_thread(self._backend.reset)
             self._active = True
-            self.log_view.add_log("DONE", f"SWO 已启动")
+            self.log_view.add_log("DONE", "SWO 已启动")
         except Exception as ex:
             self.log_view.add_log("ERROR", f"SWO 启动失败: {ex}")
-            self._switch_ref.current.value = False; self._switch_ref.current.update()
+            self._switch_ref.current.value = False
+            self._switch_ref.current.update()
 
     def _on_swo_line(self, line: str) -> None:
         """SWVReader 回调 — 线程安全推送日志。"""

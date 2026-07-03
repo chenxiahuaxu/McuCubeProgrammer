@@ -153,7 +153,7 @@ class App:
             ft.Icons.TERMINAL,
             ft.Icons.LIST_ALT,
             ft.Icons.SETTINGS,
-]
+        ]
 
         if self.probe_manager and self.target_manager and self.flash_controller:
             from src.ui.tabs.flash_tab import FlashTab

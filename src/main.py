@@ -9,23 +9,28 @@
 """
 
 import argparse
+import io
+import logging
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
+
+import flet as ft
 
 # 将项目根目录加入 sys.path
 _project_root = Path(__file__).resolve().parent.parent
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
+from src.app import App  # noqa: E402
+from src.utils.logger import add_log  # noqa: E402
+
 # ── 抑制 pyOCD 噪音：Board ID / CoreSight ──
-import logging
 logging.getLogger("pyocd").setLevel(logging.ERROR)
 
 # SVD 文件 BOM 兼容修复
 try:
     from pyocd.debug.svd import parser as _svd_parser
-    import xml.etree.ElementTree as ET
-    import io
 
     def _patched_for_xml_file(path, remove_reserved=True):
         if isinstance(path, str):
@@ -46,11 +51,6 @@ try:
     _svd_parser.SVDParser.for_xml_file = staticmethod(_patched_for_xml_file)
 except Exception:
     pass
-
-import flet as ft
-
-from src.app import App
-from src.utils.logger import add_log
 
 DEFAULT_WEB_PORT = 8550
 

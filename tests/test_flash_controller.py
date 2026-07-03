@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, call
-
 import pytest
 
 from src.logic.flash_controller import FlashController, FlashTask, FlashProgress
@@ -145,8 +143,6 @@ class TestCancel:
     async def test_cancel_stops_execution(self, controller, sample_task, mock_backend):
         """取消操作应立即使 execute 返回失败结果。"""
         import asyncio
-
-        barrier = asyncio.Event()
 
         def blocking_program(*args, **kwargs):
             raise BackendError(ErrorCode.PROGRAM_FAILED, "已取消")

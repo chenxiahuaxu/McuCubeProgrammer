@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
-
-import pytest
-
 from src.logic.probe_manager import ProbeManager
 from src.backend.interface import ProbeInfo
 

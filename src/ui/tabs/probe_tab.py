@@ -26,30 +26,30 @@ class ProbeTab:
         return ft.Container(
             content=ft.Column(
                 controls=[
-                ft.Row(
-                    controls=[
-                        ft.ElevatedButton(
-                            content=ft.Text("刷新探针列表"),
-                            icon=ft.Icons.REFRESH,
-                            on_click=self._on_refresh,
-                        ),
-                    ],
-                    alignment=ft.MainAxisAlignment.END,
-                ),
-                ft.Text(
-                    ref=self._empty_ref,
-                    value="未检测到探针",
-                    size=Font.Size.BODY,
-                    color=Colors.TEXT_SECONDARY,
-                    text_align=ft.TextAlign.CENTER,
-                ),
-                ft.ListView(
-                    ref=self._list_ref,
-                    expand=True,
-                    spacing=Spacing.SM,
-                    controls=[],
-                ),
-            ],
+                    ft.Row(
+                        controls=[
+                            ft.ElevatedButton(
+                                content=ft.Text("刷新探针列表"),
+                                icon=ft.Icons.REFRESH,
+                                on_click=self._on_refresh,
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.END,
+                    ),
+                    ft.Text(
+                        ref=self._empty_ref,
+                        value="未检测到探针",
+                        size=Font.Size.BODY,
+                        color=Colors.TEXT_SECONDARY,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    ft.ListView(
+                        ref=self._list_ref,
+                        expand=True,
+                        spacing=Spacing.SM,
+                        controls=[],
+                    ),
+                ],
                 spacing=Spacing.MD,
                 expand=True,
             ),

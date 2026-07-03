@@ -126,27 +126,25 @@ class PyOCDBackend(BackendABC):
         """启动 SWV + 回调式文本输出。"""
         import io
         session = self._require_session()
+
         class _Cw(io.StringIO):
-            def __init__(s): super().__init__(); s._buf = ""
+            def __init__(s):
+                super().__init__()
+                s._buf = ""
+
             def write(s, text):
                 s._buf += text
                 while "\n" in s._buf:
                     line, s._buf = s._buf.split("\n", 1)
                     line = "".join(c for c in line.strip() if c.isprintable() or c in "\t")
-                    if line: callback(line)
+                    if line:
+                        callback(line)
                 return len(text)
         console = _Cw()
         self._swv_reader = SWVReader(session, core_number=0)
         ok = self._swv_reader.init(sys_clock, swo_clock, console)
         if not ok:
             raise BackendError(ErrorCode.UNKNOWN_ERROR, "SWV init failed")
-
-    def swo_stop(self) -> None:
-        if self._swv_reader:
-            self._swv_reader._shutdown_event.set()
-            self._swv_reader = None
-        self._swv_raw_port: int = 0
-        self._swv_reader: SWVReader | None = None
 
     # ── 探针扫描 ─────────────────────────────────────────
 
@@ -384,6 +382,7 @@ class PyOCDBackend(BackendABC):
             except Exception:
                 _log.warning("SWV reader shutdown failed", exc_info=True)
             self._swv_reader = None
+        self._swv_raw_port = 0
 
     @property
     def swv_raw_port(self) -> int:

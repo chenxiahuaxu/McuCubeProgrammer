@@ -277,7 +277,6 @@ class FlashTab:
 
     # ── 校验 ─────────────────────────────────────────────
 
-
     def _build_base_address(self) -> ft.Row:
         """构建基地址输入行。"""
         def on_change(e):

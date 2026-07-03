@@ -9,7 +9,7 @@ from collections.abc import Callable
 
 import flet as ft
 
-from src.ui.theme import Colors, Font, Spacing
+from src.ui.theme import Colors, Spacing
 
 
 class ProbeSelector:

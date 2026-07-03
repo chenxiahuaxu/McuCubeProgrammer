@@ -7,12 +7,12 @@ PyOCDBackend 单元测试。
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.backend.error_codes import ErrorCode, BackendError
-from src.backend.interface import ProbeInfo, TargetInfo, FlashResult
+from src.backend.interface import TargetInfo
 from src.backend.pyocd_backend import PyOCDBackend
 
 
