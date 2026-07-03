@@ -17,6 +17,25 @@ _project_root = Path(__file__).resolve().parent.parent
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
+# ── 抑制 pyOCD 噪音：Board ID / SVD / CoreSight ──
+import logging
+logging.getLogger("pyocd").setLevel(logging.ERROR)
+
+# SVD 加载失败不影响烧录，直接静默掉
+try:
+    from pyocd.debug.svd.loader import SVDLoader
+    _orig_run = SVDLoader._Worker.run
+
+    def _safe_run(self):
+        try:
+            _orig_run(self)
+        except Exception:
+            pass
+
+    SVDLoader._Worker.run = _safe_run
+except Exception:
+    pass
+
 import flet as ft
 
 from src.app import App
