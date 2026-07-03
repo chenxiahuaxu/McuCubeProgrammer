@@ -218,6 +218,7 @@ class FlashTab:
             if self.probe_manager.get_selected_probe()
             else None,
             erase_chip=False,
+            frequency=load_config().get("swd_frequency", 200_000),
             swv_config={"system_clock": 168_000_000, "swo_clock": 400_000},
         )
 

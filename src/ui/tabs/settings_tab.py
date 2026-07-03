@@ -16,6 +16,7 @@ from src.ui.theme import (
     card_container,
     standard_divider,
 )
+from src.utils.config import load as cfg_load, save as cfg_save
 
 
 class SettingsTab:
@@ -26,6 +27,9 @@ class SettingsTab:
 
     def __init__(self, page: ft.Page) -> None:
         self.page = page
+        cfg = cfg_load()
+        self._current_frequency: int = cfg.get("swd_frequency", 200_000)
+        self._freq_label: ft.Text | None = None
 
     def build(self) -> ft.Control:
         is_dark = self.page.theme_mode == ft.ThemeMode.DARK
@@ -55,6 +59,48 @@ class SettingsTab:
                                     ),
                                 ],
                                 spacing=Spacing.SM,
+                            ),
+                        ],
+                        spacing=Spacing.SM,
+                    ),
+                ),
+                standard_divider(),
+                # ── SWD 频率设置 ──
+                card_container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Text(
+                                "SWD 调试时钟",
+                                size=Font.Size.HEADING,
+                                weight=500,
+                                color=Colors.TEXT_PRIMARY,
+                            ),
+                            ft.Text(
+                                "调整 SWD/JTAG 通信时钟频率。"
+                                "CMSIS-DAP 探针或非标芯片建议降低频率（200-500 kHz）以提高连接稳定性。",
+                                size=Font.Size.CAPTION,
+                                color=Colors.TEXT_SECONDARY,
+                            ),
+                            self._build_freq_label(),
+                            ft.Slider(
+                                min=100_000,
+                                max=10_000_000,
+                                divisions=99,
+                                value=self._current_frequency,
+                                label="{value}",
+                                active_color=Colors.ACCENT_PRIMARY,
+                                on_change=self._on_frequency_change,
+                            ),
+                            ft.Row(
+                                controls=[
+                                    ft.Text("低速\n100 kHz", size=Font.Size.CAPTION,
+                                            color=Colors.TEXT_SECONDARY,
+                                            text_align=ft.TextAlign.CENTER),
+                                    ft.Container(expand=True),
+                                    ft.Text("高速\n10 MHz", size=Font.Size.CAPTION,
+                                            color=Colors.TEXT_SECONDARY,
+                                            text_align=ft.TextAlign.CENTER),
+                                ],
                             ),
                         ],
                         spacing=Spacing.SM,
@@ -115,3 +161,31 @@ class SettingsTab:
             ],
             spacing=Spacing.SM,
         )
+
+    # ── SWD 频率 ──────────────────────────────────────────
+
+    def _build_freq_label(self) -> ft.Text:
+        self._freq_label = ft.Text(
+            self._format_frequency(self._current_frequency),
+            size=Font.Size.BODY,
+            weight=600,
+            color=Colors.ACCENT_PRIMARY,
+        )
+        return self._freq_label
+
+    def _on_frequency_change(self, e: ft.ControlEvent) -> None:
+        freq = int(e.control.value)
+        self._current_frequency = freq
+        if self._freq_label:
+            self._freq_label.value = self._format_frequency(freq)
+            self._freq_label.update()
+        cfg = cfg_load()
+        cfg["swd_frequency"] = freq
+        cfg_save(cfg)
+
+    @staticmethod
+    def _format_frequency(hz: int) -> str:
+        if hz >= 1_000_000:
+            return f"当前: {hz / 1_000_000:.2f} MHz"
+        else:
+            return f"当前: {hz // 1_000} kHz"

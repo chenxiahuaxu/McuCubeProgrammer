@@ -58,6 +58,9 @@ class FlashTask:
     swv_config: dict | None = None
     """SWV 配置（system_clock, swo_clock）。"""
 
+    frequency: int = 200_000
+    """SWD/JTAG 调试时钟频率（Hz），默认 200 kHz。"""
+
 
 @dataclass
 class FlashProgress:
@@ -127,12 +130,13 @@ class FlashController:
 
         try:
             emit("connect", 0.00, "正在连接目标芯片...")
-            add_log("INFO", f"连接目标: {task.target_name}")
+            freq_str = f"{task.frequency/1_000_000:.2f} MHz" if task.frequency >= 1_000_000 else f"{task.frequency//1_000} kHz"
+            add_log("INFO", f"连接目标: {task.target_name}  |  SWD 时钟: {freq_str}")
             await asyncio.to_thread(
                 self._backend.connect,
                 task.target_name,
                 task.probe_uid,
-                1_000_000,
+                task.frequency,
                 task.pack_path,
                 task.swv_config,
             )
