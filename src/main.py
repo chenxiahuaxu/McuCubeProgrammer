@@ -40,7 +40,7 @@ try:
         idx = raw.find(b"<")
         if idx > 0:
             raw = raw[idx:]
-        return _svd_parser.SVDParser(ET.fromstring(raw), remove_reserved)
+        return _svd_parser.SVDParser(ET.ElementTree(ET.fromstring(raw)), remove_reserved)
 
     _svd_parser.SVDParser.for_xml_file = staticmethod(_patched_for_xml_file)
 except Exception:
