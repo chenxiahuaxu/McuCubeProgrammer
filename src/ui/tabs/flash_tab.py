@@ -231,7 +231,6 @@ class FlashTab:
             base_address=base_addr,
             frequency=load_config().get("swd_frequency", 200_000),
             erase_chip=False,
-            frequency=load_config().get("swd_frequency", 200_000),
             swv_config={"system_clock": 168_000_000, "swo_clock": 400_000},
         )
 
