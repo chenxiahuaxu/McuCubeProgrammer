@@ -1,0 +1,33 @@
+[MASTER]
+# Ignore flet - its API is too dynamic for pylint's static analysis
+ignored-modules=flet
+
+[MESSAGES CONTROL]
+# Disable noisy convention checks for test files
+# C0114: missing-module-docstring
+# C0115: missing-class-docstring
+# C0116: missing-function-docstring
+# These are enforced in src/ but not tests/
+disable=
+    C0114,
+    C0115,
+    C0116,
+
+[FORMAT]
+max-line-length=100
+
+[DESIGN]
+max-args=7
+max-attributes=15
+max-locals=20
+max-branches=15
+max-statements=60
+
+[SIMILARITIES]
+min-similarity-lines=5
+ignore-comments=yes
+ignore-docstrings=yes
+ignore-imports=yes
+
+[BASIC]
+good-names=i,j,k,ex,_,e,fn,id,x,y
