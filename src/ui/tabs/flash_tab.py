@@ -18,7 +18,7 @@ from src.ui.components.flash_panel import FlashPanel
 from src.ui.components.log_view import LogView
 from src.ui.components.probe_selector import ProbeSelector
 from src.ui.components.target_selector import TargetSelector
-from src.ui.theme import section_divider, Spacing
+from src.ui.theme import Colors, section_divider, Spacing
 from src.utils.config import load as load_config, save
 
 
@@ -47,6 +47,12 @@ class FlashTab:
         self.flash_controller = flash_controller
         self.log_view = log_view
         self.loop = loop
+
+        # ── 基地址输入框 ──
+        cfg = load_config()
+        saved_base = cfg.get("base_address", "0x08000000")
+        self._base_ref = ft.Ref[ft.TextField]()
+        self._base_address: str = saved_base
 
         # ── 子组件 ──
         self.probe_selector = ProbeSelector(
@@ -85,6 +91,8 @@ class FlashTab:
                     section_divider(),
                     self.file_picker.build(),
                     section_divider(),
+                    self._build_base_address(),
+                    section_divider(),
                     self.flash_panel.build(),
                 ],
             ),
@@ -121,6 +129,7 @@ class FlashTab:
             cfg["target_name"] = self.target_manager.get_selected_target()
         if self.file_picker.get_path():
             cfg["firmware_path"] = self.file_picker.get_path()
+        cfg["base_address"] = self._base_address
         save(cfg)
 
     async def _on_pick_pack(self) -> None:
@@ -211,12 +220,16 @@ class FlashTab:
     async def _do_flash(self) -> None:
         self.flash_panel.set_running(True)
 
+        base_addr = self._parse_base_address()
+
         task = FlashTask(
             firmware_path=self.file_picker.get_path() or "",
             target_name=self.target_manager.get_selected_target() or "",
             probe_uid=self.probe_manager.get_selected_probe().unique_id
             if self.probe_manager.get_selected_probe()
             else None,
+            base_address=base_addr,
+            frequency=load_config().get("swd_frequency", 200_000),
             erase_chip=False,
             frequency=load_config().get("swd_frequency", 200_000),
             swv_config={"system_clock": 168_000_000, "swo_clock": 400_000},
@@ -238,6 +251,38 @@ class FlashTab:
 
     # ── 校验 ─────────────────────────────────────────────
 
+
+    def _build_base_address(self) -> ft.Row:
+        """构建基地址输入行。"""
+        def on_change(e):
+            self._base_address = e.control.value.strip()
+            self._save_selections()
+
+        tf = ft.TextField(
+            ref=self._base_ref,
+            label="Flash 烧录基地址",
+            value=self._base_address,
+            width=200,
+            text_size=13,
+            on_change=on_change,
+            hint_text="例如 0x0800C000",
+            prefix_icon=ft.Icons.MEMORY,
+        )
+        return ft.Row(
+            controls=[
+                tf,
+                ft.Text(
+                    "仅 .bin 文件有效，.hex/.elf 从文件内自动读取地址",
+                    size=11,
+                    color=Colors.TEXT_DIM,
+                    italic=True,
+                ),
+            ],
+            spacing=Spacing.MD,
+        )
+
+    def _parse_base_address(self) -> int:
+        return int(self._base_address, 0)
 
     def _validate(self) -> str | None:
         if not self.probe_manager.get_selected_probe():
