@@ -41,7 +41,7 @@ class DebugTab:
             on_click=lambda _: self._do_reset(),
         )
 
-        self._refresh_state()
+        self._apply_state()
 
         return ft.ListView(
             controls=[
@@ -76,7 +76,8 @@ class DebugTab:
             padding=Spacing.XXL,
         )
 
-    def _refresh_state(self) -> None:
+    def _apply_state(self) -> None:
+        """设置控件属性，不调 update（用于构建时）。"""
         if not self._backend or not self._backend.is_connected:
             self._state_text.value = t("debugNotConnected")
             self._state_text.color = Colors.TEXT_SECONDARY
@@ -95,6 +96,9 @@ class DebugTab:
             self._halt_btn.disabled = False
             self._resume_btn.disabled = True
             self._reset_btn.disabled = False
+
+    def _refresh_state(self) -> None:
+        self._apply_state()
         self._state_text.update()
         self._halt_btn.update()
         self._resume_btn.update()
