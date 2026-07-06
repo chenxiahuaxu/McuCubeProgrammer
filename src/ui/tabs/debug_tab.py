@@ -54,7 +54,7 @@ class DebugTab:
         add_btn = ft.ElevatedButton(content=ft.Text(t("debugWatchAdd"), size=Font.Size.CAPTION), icon=ft.Icons.ADD, on_click=lambda _: self._add_watch())
         self._watch_column = ft.Column(spacing=Spacing.XS)
         self._chart_canvas = ft.Column(spacing=Spacing.XS)
-        self._elf_path = ft.Text("", size=Font.Size.CAPTION, color=Colors.TEXT_DIM, no_wrap=True)
+        self._elf_path = ft.Text("", size=Font.Size.CAPTION, color=Colors.TEXT_DIM, no_wrap=True, tooltip="")
         self._elf_view_btn = ft.TextButton(content=ft.Text(t("debugElfView")), icon=ft.Icons.LIST, visible=False, on_click=lambda _: self._show_symbols())
         self._elf_symbols_data: list[dict] = []
         self._rtos_column = ft.Column(spacing=Spacing.XS)
@@ -66,7 +66,8 @@ class DebugTab:
                     ft.Text(t("debugElfTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
                     ft.Row(controls=[
                         ft.ElevatedButton(content=ft.Text(t("debugElfLoad"), size=Font.Size.CAPTION), icon=ft.Icons.FOLDER_OPEN, on_click=lambda _: self._pick_elf()),
-                        ft.Container(content=self._elf_path, width=300),
+                        ft.Row(controls=[self._elf_path], scroll=ft.ScrollMode.AUTO, width=300,
+                               height=30, vertical_alignment=ft.CrossAxisAlignment.START),
                         self._elf_view_btn,
                     ], spacing=Spacing.SM),
                 ], spacing=Spacing.SM)),
@@ -238,7 +239,7 @@ class DebugTab:
         files = await picker.pick_files(dialog_title="Select ELF file", allowed_extensions=["elf", "axf"])
         if files and files[0].path:
             self._elf_full_path = files[0].path
-            self._elf_path.value = files[0].path; self._elf_path.update()
+            self._elf_path.value = files[0].path; self._elf_path.tooltip = files[0].path; self._elf_path.update()
             self._load_elf(files[0].path)
 
     def _load_elf(self, path: str) -> None:
