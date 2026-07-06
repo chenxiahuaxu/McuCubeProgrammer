@@ -125,6 +125,8 @@ class ChipInfoTab:
             self._info_row(t("chipDevice"), info.name),
             self._info_row(t("chipPartNumber"), info.part_number or "\u2014"),
             self._info_row(t("chipVendor"), info.vendor or "\u2014"),
+            self._info_row(t("chipDapIdcode"), info.dap_idcode or "\u2014"),
+            self._info_row(t("chipCore"), info.core_name or "\u2014"),
         ]
         self._content.controls.append(
             card_container(
