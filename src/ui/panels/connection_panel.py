@@ -16,11 +16,11 @@ from src.ui.theme import Colors, Font, Spacing
 from src.utils.config import load as cfg_load, save as cfg_save
 
 PANEL_WIDTH: int = 240
-DROPDOWN_WIDTH: int = PANEL_WIDTH - 36  # account for padding
+DROPDOWN_WIDTH: int = PANEL_WIDTH - 30  # 210px usable
 
 
 def _section_label(text: str) -> ft.Text:
-    return ft.Text(text, size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY)
+    return ft.Text(text, size=Font.Size.MICRO, color=Colors.TEXT_DIM)
 
 
 def _build_dropdown(ref, width: int | None = None, expand: bool = False) -> ft.Dropdown:
@@ -31,6 +31,7 @@ def _build_dropdown(ref, width: int | None = None, expand: bool = False) -> ft.D
         kwargs["width"] = width
     return ft.Dropdown(
         **kwargs,
+        text_size=12,
         bgcolor=Colors.BG_ELEVATED,
         border=ft.Border(
             top=ft.BorderSide(1, Colors.BORDER),
@@ -86,8 +87,10 @@ class ConnectionPanel:
             value=self._interface,
             content=ft.Row(
                 controls=[
-                    ft.Radio(value="swd", label=t("connSwd"), fill_color=Colors.ACCENT_PRIMARY),
-                    ft.Radio(value="jtag", label=t("connJtag"), fill_color=Colors.ACCENT_PRIMARY),
+                    ft.Radio(value="swd", label=t("connSwd"), fill_color=Colors.ACCENT_PRIMARY,
+                              label_style=ft.TextStyle(size=Font.Size.CAPTION)),
+                    ft.Radio(value="jtag", label=t("connJtag"), fill_color=Colors.ACCENT_PRIMARY,
+                              label_style=ft.TextStyle(size=Font.Size.CAPTION)),
                 ],
                 spacing=Spacing.MD,
             ),
@@ -117,7 +120,7 @@ class ConnectionPanel:
             content=ft.Column(
                 scroll=ft.ScrollMode.AUTO,
                 controls=[
-                    ft.Text(t("tabProbe"), size=Font.Size.HEADING, weight=500,
+                    ft.Text(t("tabProbe"), size=Font.Size.BODY, weight=500,
                             color=Colors.TEXT_PRIMARY),
                     ft.Row(
                         controls=[probe_dd, refresh_btn],
