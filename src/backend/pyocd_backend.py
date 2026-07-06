@@ -479,26 +479,40 @@ class PyOCDBackend(BackendABC):
     def get_rtos_threads(self, elf_path: str = "") -> list[dict]:
         session = self._require_session()
 
-        # 加载 ELF 到 pyOCD 会话——供 RTOS provider 读取符号
-        if elf_path and os.path.isfile(elf_path):
-            try:
-                from pyocd.debug.elf.elf import ELFBinaryFile
-                session.target.elf = ELFBinaryFile(elf_path, session.target.memory_map)
-            except Exception as e:
-                _log.warning("Failed to load ELF into pyOCD: %s", e)
+        if not elf_path or not os.path.isfile(elf_path):
+            return []
+
+        # 加载 ELF 符号表
+        try:
+            from elftools.elf.elffile import ELFFile as RawELFFile
+            raw_elf = RawELFFile(open(elf_path, "rb"))
+        except Exception as e:
+            _log.warning("Failed to open ELF: %s", e)
+            return []
+
+        try:
+            from pyocd.debug.elf.decoder import ElfSymbolDecoder
+            elf_decoder = ElfSymbolDecoder(raw_elf)
+        except Exception as e:
+            _log.warning("Failed to decode ELF symbols: %s", e)
+            return []
+
+        # 适配器：ElfSymbolDecoder.get_symbol_for_name → get_symbol_value
+        class _SymbolAdapter:
+            def get_symbol_value(self, name: str) -> int | None:
+                sym = elf_decoder.get_symbol_for_name(name)
+                return sym.address if sym else None
+
+        # 包装器：让 target.elf 暴露 symbol_decoder（_get_elf_symbol_size 需要）
+        class _ElfWrapper:
+            symbol_decoder = elf_decoder
+        session.target.elf = _ElfWrapper()
 
         try:
             from pyocd.rtos.freertos import FreeRTOSThreadProvider
             provider = FreeRTOSThreadProvider(session.target)
-            # 使用 pyOCD 内置符号提供器（从 session.target.elf 提取）
-            from pyocd.debug.elf.elf import ElfSymbolDecoder
-            decoder = ElfSymbolDecoder(session.target.elf) if session.target.elf else None
-            if decoder is None:
-                return []
-            if not provider.init(decoder):
-                required = FreeRTOSThreadProvider.FREERTOS_SYMBOLS
-                _log.warning("FreeRTOS init failed. Required: %s. ELF: %s",
-                             required, elf_path)
+            if not provider.init(_SymbolAdapter()):
+                _log.warning("FreeRTOS init failed. ELF: %s", elf_path)
                 return []
             provider.read_from_target = True
             provider.update_threads()
