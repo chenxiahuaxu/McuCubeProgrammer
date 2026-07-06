@@ -1,0 +1,331 @@
+"""持久连接面板 — 始终可见，不跟随标签切换。
+
+包含: 探针选择 / 接口类型 / 连接方式 / 复位方式 / 芯片选择
+"""
+
+from __future__ import annotations
+
+import asyncio
+
+import flet as ft
+
+from src.i18n import t
+from src.logic.probe_manager import ProbeManager
+from src.logic.target_manager import TargetManager
+from src.ui.theme import Colors, Font, Spacing, card_container
+from src.utils.config import load as cfg_load, save as cfg_save
+from src.utils.logger import add_log
+
+
+def _build_dropdown(ref, width: int = 140) -> ft.Dropdown:
+    return ft.Dropdown(
+        ref=ref,
+        width=width,
+        dense=True,
+        bgcolor=Colors.BG_ELEVATED,
+        border=ft.Border(
+            top=ft.BorderSide(1, Colors.BORDER),
+            left=ft.BorderSide(1, Colors.BORDER),
+            right=ft.BorderSide(1, Colors.BORDER),
+            bottom=ft.BorderSide(1, Colors.BORDER),
+        ),
+        border_radius=4,
+    )
+
+
+class ConnectionPanel:
+    """持久连接面板。"""
+
+    def __init__(
+        self,
+        page: ft.Page,
+        probe_manager: ProbeManager,
+        target_manager: TargetManager,
+    ) -> None:
+        self.page = page
+        self.probe_mgr = probe_manager
+        self.target_mgr = target_manager
+
+        self._probe_dd_ref = ft.Ref[ft.Dropdown]()
+        self._vendor_ref = ft.Ref[ft.Dropdown]()
+        self._chip_ref = ft.Ref[ft.Dropdown]()
+        self._interface_ref = ft.Ref[ft.RadioGroup]()
+        self._connect_mode_ref = ft.Ref[ft.Dropdown]()
+        self._reset_mode_ref = ft.Ref[ft.Dropdown]()
+        self._scanning: bool = False
+
+        cfg = cfg_load()
+        self._interface: str = cfg.get("interface", "swd")
+        self._connect_mode: str = cfg.get("connect_mode", "normal")
+        self._reset_mode: str = cfg.get("reset_mode", "hw")
+
+    # ── 构建 ──────────────────────────────────────────────
+
+    def build(self) -> ft.Control:
+        # ── 探针选择 ──
+        probe_dd = _build_dropdown(self._probe_dd_ref, 240)
+        probe_dd.hint_text = t("probeSelectHint")
+        probe_dd.options = []
+        probe_dd.on_select = self._on_probe_selected
+
+        # ── 接口类型 ──
+        interface_group = ft.RadioGroup(
+            ref=self._interface_ref,
+            value=self._interface,
+            content=ft.Row(
+                controls=[
+                    ft.Radio(
+                        value="swd",
+                        label=t("connSwd"),
+                        fill_color=Colors.ACCENT_PRIMARY,
+                    ),
+                    ft.Radio(
+                        value="jtag",
+                        label=t("connJtag"),
+                        fill_color=Colors.ACCENT_PRIMARY,
+                    ),
+                ],
+                spacing=Spacing.XS,
+            ),
+            on_select=self._on_interface_change,
+        )
+
+        # ── 连接方式 ──
+        connect_dd = _build_dropdown(self._connect_mode_ref, 120)
+        connect_dd.value = self._connect_mode
+        connect_dd.options = [
+            ft.dropdown.Option("normal", t("connModeNormal")),
+            ft.dropdown.Option("under_reset", t("connModeUnderReset")),
+            ft.dropdown.Option("hotplug", t("connModeHotPlug")),
+        ]
+        connect_dd.on_select = self._on_connect_mode_change
+
+        # ── 复位方式 ──
+        reset_dd = _build_dropdown(self._reset_mode_ref, 120)
+        reset_dd.value = self._reset_mode
+        reset_dd.options = [
+            ft.dropdown.Option("hw", t("connResetHw")),
+            ft.dropdown.Option("sw_sys", t("connResetSwSys")),
+            ft.dropdown.Option("sw_vect", t("connResetSwVect")),
+            ft.dropdown.Option("sw_core", t("connResetSwCore")),
+        ]
+        reset_dd.on_select = self._on_reset_mode_change
+
+        # ── 芯片选择 — 厂家 + 器件两级联动 ──
+        from src.ui.components.target_selector import _VENDORS, _match_vendor
+
+        vendor_dd = _build_dropdown(self._vendor_ref, 160)
+        vendor_dd.hint_text = t("targetVendor")
+        vendor_dd.options = [
+            ft.dropdown.Option(key=k, text=f"{label} ({k})")
+            for k, label, _ in _VENDORS
+        ]
+        vendor_dd.on_select = lambda e: self._populate_chips(
+            e.control.value, _VENDORS, _match_vendor
+        )
+
+        chip_dd = _build_dropdown(self._chip_ref, 220)
+        chip_dd.hint_text = t("targetChip")
+        chip_dd.editable = True
+        chip_dd.enable_filter = True
+        chip_dd.menu_height = 280
+        chip_dd.on_select = self._on_chip_selected
+
+        # ── 工具按钮 — 刷新探针 + 安装 Pack ──
+        refresh_btn = ft.IconButton(
+            icon=ft.Icons.REFRESH,
+            tooltip=t("probeRefresh"),
+            icon_size=18,
+            on_click=self._on_refresh_click,
+        )
+
+        return card_container(
+            content=ft.Column(
+                controls=[
+                    # Row 1: 探针 + 接口
+                    ft.Row(
+                        controls=[
+                            probe_dd,
+                            refresh_btn,
+                            ft.VerticalDivider(width=1, color=Colors.DIVIDER),
+                            ft.Text(
+                                t("connInterfaceLabel"),
+                                size=Font.Size.CAPTION,
+                                color=Colors.TEXT_SECONDARY,
+                            ),
+                            interface_group,
+                        ],
+                        spacing=Spacing.SM,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    # Row 2: 连接方式 + 复位方式 + 芯片选择
+                    ft.Row(
+                        controls=[
+                            ft.Text(
+                                t("connModeLabel"),
+                                size=Font.Size.CAPTION,
+                                color=Colors.TEXT_SECONDARY,
+                            ),
+                            connect_dd,
+                            ft.Text(
+                                t("connResetLabel"),
+                                size=Font.Size.CAPTION,
+                                color=Colors.TEXT_SECONDARY,
+                            ),
+                            reset_dd,
+                            ft.VerticalDivider(width=1, color=Colors.DIVIDER),
+                            vendor_dd,
+                            chip_dd,
+                        ],
+                        spacing=Spacing.SM,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                ],
+                spacing=Spacing.SM,
+            ),
+            padding=Spacing.MD,
+        )
+
+    # ── 探针 ──────────────────────────────────────────────
+
+    async def _on_refresh_click(self, _e: ft.ControlEvent) -> None:
+        if self._scanning:
+            return
+        self._scanning = True
+        self._probe_dd_ref.current.disabled = True
+        self._probe_dd_ref.current.hint_text = t("probeScanning")
+        self._probe_dd_ref.current.update()
+
+        try:
+            await asyncio.to_thread(self.probe_mgr.scan_probes)
+            probes = self.probe_mgr.get_probes()
+            dd = self._probe_dd_ref.current
+            dd.options.clear()
+            if probes:
+                for p in probes:
+                    dd.options.append(
+                        ft.dropdown.Option(
+                            key=p.unique_id,
+                            text=f"[{p.probe_type.upper()}] {p.description}",
+                        )
+                    )
+                dd.hint_text = t("probeSelectHint")
+            else:
+                dd.hint_text = t("probeNotFound")
+            dd.update()
+        finally:
+            self._scanning = False
+            self._probe_dd_ref.current.disabled = False
+            self._probe_dd_ref.current.update()
+
+    def _on_probe_selected(self, e: ft.ControlEvent) -> None:
+        uid = e.control.value
+        if uid:
+            self.probe_mgr.select_probe(uid)
+            targets = self.target_mgr.list_all_targets()
+            self._all_targets = targets
+            self._save_config()
+
+    # ── 芯片 ──────────────────────────────────────────────
+
+    def _populate_chips(self, vendor_key: str, vendors, matcher) -> None:
+        if not vendor_key or not self._chip_ref.current:
+            return
+        prefix = ""
+        for k, _, p in vendors:
+            if k == vendor_key:
+                prefix = p
+                break
+        if prefix and prefix != "":
+            if vendor_key == "OTHER":
+                all_prefixes = [p for _, _, p in vendors if p]
+                chips = [
+                    n for n, _ in self._all_targets
+                    if not any(matcher(n, pp) for pp in all_prefixes)
+                ]
+            else:
+                chips = [
+                    n for n, _ in self._all_targets
+                    if matcher(n, prefix)
+                ]
+        else:
+            chips = [n for n, _ in self._all_targets]
+        self._chip_ref.current.options = [
+            ft.dropdown.Option(key=name, text=name) for name in chips
+        ]
+        self._chip_ref.current.hint_text = t("targetCount", count=len(chips))
+        self._chip_ref.current.update()
+
+    def _on_chip_selected(self, e: ft.ControlEvent) -> None:
+        name = e.control.value
+        if name:
+            self.target_mgr.select_target(name)
+            self._save_config()
+
+    # ── 接口 / 连接 / 复位 ───────────────────────────────
+
+    def _on_interface_change(self, e: ft.ControlEvent) -> None:
+        self._interface = e.control.value
+        self._save_config()
+
+    def _on_connect_mode_change(self, e: ft.ControlEvent) -> None:
+        self._connect_mode = e.control.value
+        self._save_config()
+
+    def _on_reset_mode_change(self, e: ft.ControlEvent) -> None:
+        self._reset_mode = e.control.value
+        self._save_config()
+
+    # ── 配置持久化 ───────────────────────────────────────
+
+    def _save_config(self) -> None:
+        cfg = cfg_load()
+        if self.probe_mgr.get_selected_probe():
+            cfg["probe_uid"] = self.probe_mgr.get_selected_probe().unique_id
+        if self.target_mgr.get_selected_target():
+            cfg["target_name"] = self.target_mgr.get_selected_target()
+        cfg["interface"] = self._interface
+        cfg["connect_mode"] = self._connect_mode
+        cfg["reset_mode"] = self._reset_mode
+        cfg_save(cfg)
+
+    # ── 公共方法 ─────────────────────────────────────────
+
+    def select_probe(self, unique_id: str) -> None:
+        """程序化选中探针（启动时自动恢复）。"""
+        dd = self._probe_dd_ref.current
+        if not dd:
+            return
+        probes = self.probe_mgr.get_probes()
+        dd.options.clear()
+        for p in probes:
+            dd.options.append(
+                ft.dropdown.Option(
+                    key=p.unique_id,
+                    text=f"[{p.probe_type.upper()}] {p.description}",
+                )
+            )
+        dd.value = unique_id
+        dd.hint_text = t("probeSelectHint")
+        dd.update()
+
+        self.probe_mgr.select_probe(unique_id)
+        self._all_targets = self.target_mgr.list_all_targets()
+        # 恢复芯片选择
+        saved_target = cfg_load().get("target_name")
+        if saved_target:
+            target_names = [n for n, _ in self._all_targets]
+            if saved_target in target_names:
+                # 推断厂家
+                from src.ui.components.target_selector import _VENDORS, _match_vendor
+                vendor_key = "OTHER"
+                for k, _, p in _VENDORS:
+                    if p and _match_vendor(saved_target, p):
+                        vendor_key = k
+                        break
+                self._vendor_ref.current.value = vendor_key
+                self._vendor_ref.current.update()
+                self._populate_chips(vendor_key, _VENDORS, _match_vendor)
+                self._chip_ref.current.value = saved_target
+                self._chip_ref.current.update()
+                self.target_mgr.select_target(saved_target)
