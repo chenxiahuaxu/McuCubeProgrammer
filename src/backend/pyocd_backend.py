@@ -76,6 +76,23 @@ def _extract_target_info(target: Target) -> TargetInfo:
     """从 pyOCD Target 对象中提取芯片的存储布局信息。"""
     memory_map: MemoryMap = target.memory_map
 
+    # 诊断：列出所有内存区域
+    all_regions = list(memory_map.regions)
+    _log.info(
+        "MemoryMap diagnostics: total_regions=%d, iter_matching('flash')=%d, "
+        "iter_matching('ram')=%d, default_ram=%s, default_flash=%s",
+        len(all_regions),
+        len(list(memory_map.iter_matching_regions(type="flash"))),
+        len(list(memory_map.iter_matching_regions(type="ram"))),
+        memory_map.get_default_region_of_type("ram"),
+        memory_map.get_default_region_of_type("flash"),
+    )
+    for r in all_regions:
+        _log.info(
+            "  region: name=%s type=%s start=0x%08X length=%d sector=%d access=%s",
+            r.name, r.type, r.start, r.length, r.sector_size, r.access,
+        )
+
     flash_regions: list[FlashRegion] = []
     for region in memory_map.iter_matching_regions(type="flash"):
         flash_regions.append(
