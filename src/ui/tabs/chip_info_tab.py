@@ -14,7 +14,6 @@ from src.ui.theme import (
     section_divider,
     standard_divider,
 )
-from src.utils.logger import add_log
 
 
 def _fmt_addr(addr: int) -> str:
@@ -78,7 +77,6 @@ class ChipInfoTab:
         self._content.controls.clear()
 
         if not self._backend or not self._backend.is_connected:
-            add_log("DEBUG", f"[ChipInfo] is_connected={self._backend and self._backend.is_connected}")
             self._content.controls.append(
                 card_container(
                     content=ft.Column(
@@ -96,14 +94,7 @@ class ChipInfoTab:
 
         try:
             info: TargetInfo = self._backend.get_target_info()
-            add_log("INFO", (
-                f"[ChipInfo] name={info.name} part={info.part_number} vendor={info.vendor} "
-                f"flash_regions={len(info.flash_regions)} "
-                f"flash_total={info.total_flash_size} "
-                f"ram={info.ram_start:#010x}+{info.ram_size}"
-            ))
-        except Exception as ex:
-            add_log("ERROR", f"[ChipInfo] get_target_info failed: {ex}")
+        except Exception:
             self._content.controls.append(
                 card_container(
                     content=ft.Text(
