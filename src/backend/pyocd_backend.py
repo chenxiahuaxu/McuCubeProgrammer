@@ -476,16 +476,33 @@ class PyOCDBackend(BackendABC):
                 f"读取内存失败 (0x{address:08X}, {size} bytes): {e}",
             ) from e
 
-    def get_rtos_threads(self) -> list[dict]:
+    def get_rtos_threads(self, elf_path: str = "") -> list[dict]:
         session = self._require_session()
+        # 构建符号提供器
+        symbol_map: dict[str, int] = {}
+        if elf_path:
+            try:
+                from src.utils.elf_parser import parse_elf_symbols
+                for s in parse_elf_symbols(elf_path):
+                    symbol_map[s["name"]] = s["addr"]
+            except Exception:
+                pass
+
+        class _SymbolProvider:
+            def get_symbol_value(self, name: str) -> int | None:
+                return symbol_map.get(name)
+
         try:
             from pyocd.rtos.freertos import FreeRTOSThreadProvider
             provider = FreeRTOSThreadProvider(session.target)
+            if not provider.init(_SymbolProvider()):
+                return []  # 符号不足，可能未运行 FreeRTOS
+            provider.read_from_target = True
+            provider.update_threads()
             threads = provider.get_threads()
             result = []
-            for t in threads:
-                desc: str = getattr(t, "description", "") or ""
-                # 从 description 解析优先级和状态
+            for thread in threads:
+                desc: str = getattr(thread, "description", "") or ""
                 priority = ""
                 state = ""
                 stack_usage = ""
@@ -498,12 +515,12 @@ class PyOCDBackend(BackendABC):
                     elif "Stack" in part:
                         stack_usage = part.split(":")[-1].strip()
                 result.append({
-                    "name": t.name,
+                    "name": thread.name,
                     "priority": priority,
                     "state": state,
                     "stack_usage": stack_usage,
-                    "is_current": t.is_current,
-                    "unique_id": t.unique_id,
+                    "is_current": thread.is_current,
+                    "unique_id": thread.unique_id,
                 })
             return result
         except Exception:

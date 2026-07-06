@@ -347,9 +347,9 @@ class BackendABC(ABC):
         ...
 
     @abstractmethod
-    def get_rtos_threads(self) -> list[dict]:
+    def get_rtos_threads(self, elf_path: str = "") -> list[dict]:
         """获取 RTOS 线程列表。
-        每项包含 name / priority / state / stack_usage。
+        elf_path: 可选 ELF 文件路径，用于查找 FreeRTOS 符号地址。
         若目标未运行 RTOS 或不支持，返回空列表。
         """
         ...

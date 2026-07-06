@@ -261,7 +261,8 @@ class DebugTab:
         if not self._backend or not self._backend.is_connected:
             return
         try:
-            threads = self._backend.get_rtos_threads()
+            elf = self._elf_path.value.strip()
+            threads = self._backend.get_rtos_threads(elf)
             self._rtos_column.controls.clear()
             if not threads:
                 self._rtos_column.controls.append(ft.Text(t("debugRtosNone"), size=Font.Size.CAPTION, color=Colors.TEXT_DIM))
