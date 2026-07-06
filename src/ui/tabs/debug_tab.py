@@ -30,8 +30,9 @@ class DebugTab:
         self._watch_running: bool = False
         self._watch_column: ft.Column | None = None
         self._trend_dlg: ft.AlertDialog | None = None
-        self._trend_content: ft.Column | None = None
         self._trend_name: str = ""
+        self._trend_canvas: cv.Canvas | None = None
+        self._trend_info: ft.Text | None = None
         self._add_addr: ft.TextField | None = None
         self._add_size: ft.Dropdown | None = None
         self._add_name: ft.TextField | None = None
@@ -211,48 +212,54 @@ class DebugTab:
                     w["history"] = w["history"][-_HISTORY_MAX:]
             self._rebuild_watch_list()
             # 自动刷新趋势弹窗（暂停时不绘制）
-            if self._trend_name and self._trend_content:
-                halted = self._backend.is_halted if self._backend else False
-                if not halted:
-                    new_content = self._build_waveform(self._trend_name)
-                    if self._trend_dlg:
-                        self._trend_dlg.content = new_content
-                        self._trend_content = new_content
-                        self._trend_dlg.update()
+            if self._trend_name and self._trend_canvas and not self._backend.is_halted:
+                self._refresh_waveform_data()
             await asyncio.sleep(0.5)
 
     def _show_trend(self, name: str) -> None:
-        """弹出指定变量的波形图对话框（自动刷新）。"""
-        watch = next((w for w in self._watches if w["name"] == name), None)
-        if not watch:
-            return
+        """弹出波形图对话框，Canvas 和 Info 只创建一次，之后原位刷新。"""
         self._trend_name = name
-        self._trend_content = self._build_waveform(name)
+        W = 800; H = 260
+
+        self._trend_info = ft.Text(
+            f"{name}:  —", size=Font.Size.CAPTION,
+            color=Colors.TEXT_DIM, font_family=Font.MONO)
+        self._trend_canvas = cv.Canvas(shapes=[], width=W, height=H)
+
+        scroll_row = ft.Row(
+            [self._trend_canvas],
+            scroll=ft.ScrollMode.ADAPTIVE,
+            height=H + 12,
+        )
+        content = ft.Column([
+            self._trend_info,
+            ft.Divider(height=6),
+            scroll_row,
+        ], spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO, width=560, height=400)
+
+        self._refresh_waveform_data()
+
         self._trend_dlg = ft.AlertDialog(
             modal=True,
             open=True,
             title=ft.Text(f"Waveform — {name}"),
-            content=self._trend_content,
+            content=content,
             actions=[ft.ElevatedButton(content=ft.Text("Close"), on_click=lambda _: self._close_trend())],
         )
         self._page.show_dialog(self._trend_dlg)
 
-    def _build_waveform(self, name: str) -> ft.Column:
-        """用 Canvas 绘制高级波形图（网格 + 填充 + 连线 + 圆点）。"""
-        watch = next((w for w in self._watches if w["name"] == name), None)
+    def _refresh_waveform_data(self) -> None:
+        """原位更新 Canvas 形状 + Info 文本（不替换 dialog content）。"""
+        if not self._trend_name or not self._trend_canvas:
+            return
+        watch = next((w for w in self._watches if w["name"] == self._trend_name), None)
         if not watch:
-            return ft.Column()
+            return
         hist = watch.get("history", [])
         vals = [v for v in hist if isinstance(v, (int, float))]
 
-        W = 800
-        H = 260
-        PAD = 28
-        MAX_DOTS = 120
-        COPPER = "#D99A5A"
-        GREEN = "#26A641"
-
-        info = ft.Text(f"{name}:  0 samples", size=Font.Size.CAPTION, color=Colors.TEXT_DIM, font_family=Font.MONO)
+        W = 800; H = 260; PAD = 28; MAX_DOTS = 120
+        COPPER = "#D99A5A"; GREEN = "#26A641"
         shapes: list[cv.Shape] = []
 
         def y_of(v, vmin, span):
@@ -261,73 +268,53 @@ class DebugTab:
         if vals:
             vmax = max(vals); vmin = min(vals)
             span = vmax - vmin if vmax != vmin else 1
-            info.value = f"{name}:  min={vmin}  max={vmax}  cur={vals[-1]}"
+            if self._trend_info:
+                self._trend_info.value = f"{self._trend_name}:  min={vmin}  max={vmax}  cur={vals[-1]}"
             recent = vals[-MAX_DOTS:]
             bottom_y = y_of(vmin, vmin, span)
             n = len(recent)
             x_step = (W - 2 * PAD) / max(n - 1, 1)
 
-            # ── 1. 背景边框 ──
-            shapes.append(cv.Rect(
-                PAD, PAD, W - 2 * PAD, H - 2 * PAD,
-                paint=ft.Paint(color="#30D99A5A", stroke_width=1),
-            ))
-
-            # ── 2. 水平网格线 ──
+            # 1. 边框
+            shapes.append(cv.Rect(PAD, PAD, W - 2 * PAD, H - 2 * PAD,
+                paint=ft.Paint(color="#30D99A5A", stroke_width=1)))
+            # 2. 网格线
             grid_paint = ft.Paint(color="#20D99A5A", stroke_width=0.5)
             for pct in [0.25, 0.5, 0.75]:
                 y = PAD + (H - 2 * PAD) * (1 - pct)
                 shapes.append(cv.Line(PAD, y, W - PAD, y, paint=grid_paint))
-
-            # ── 3. 数据点 → 像素坐标 ──
-            pts: list[tuple[float, float]] = []
-            for i, v in enumerate(recent):
-                x = PAD + i * x_step
-                y = y_of(v, vmin, span)
-                pts.append((x, y))
+            # 3. 像素坐标
+            pts = [(PAD + i * x_step, y_of(v, vmin, span)) for i, v in enumerate(recent)]
 
             if n >= 2:
-                # ── 4. 填充区域（半透明） ──
+                # 4. 填充
                 fill_path = [cv.Path.MoveTo(pts[0][0], pts[0][1])]
                 for px, py in pts[1:]:
                     fill_path.append(cv.Path.LineTo(px, py))
                 fill_path.append(cv.Path.LineTo(pts[-1][0], bottom_y))
                 fill_path.append(cv.Path.LineTo(pts[0][0], bottom_y))
                 fill_path.append(cv.Path.Close())
-                shapes.append(cv.Path(
-                    elements=fill_path,
-                    paint=ft.Paint(color="#26D99A5A", style=ft.PaintingStyle.FILL),
-                ))
-
-                # ── 5. 波形连线 ──
-                shapes.append(cv.Points(
-                    points=[(x, y) for x, y in pts],
-                    point_mode=cv.PointMode.POLYGON,
-                    paint=ft.Paint(color=GREEN, stroke_width=2, anti_alias=True),
-                ))
-
-                # ── 6. 采样圆点（每 3 个点） ──
+                shapes.append(cv.Path(elements=fill_path,
+                    paint=ft.Paint(color="#26D99A5A", style=ft.PaintingStyle.FILL)))
+                # 5. 连线
+                shapes.append(cv.Points(points=pts, point_mode=cv.PointMode.POLYGON,
+                    paint=ft.Paint(color=GREEN, stroke_width=2, anti_alias=True)))
+                # 6. 圆点（每 3 个）
                 for i in range(0, n, 3):
                     px, py = pts[i]
-                    shapes.append(cv.Circle(
-                        px, py, 3,
-                        paint=ft.Paint(color=GREEN, style=ft.PaintingStyle.FILL),
-                    ))
+                    shapes.append(cv.Circle(px, py, 3,
+                        paint=ft.Paint(color=GREEN, style=ft.PaintingStyle.FILL)))
             elif n == 1:
-                # 单点情况：只画一个圆
                 px, py = pts[0]
-                shapes.append(cv.Circle(
-                    px, py, 4,
-                    paint=ft.Paint(color=GREEN, style=ft.PaintingStyle.FILL),
-                ))
+                shapes.append(cv.Circle(px, py, 4,
+                    paint=ft.Paint(color=GREEN, style=ft.PaintingStyle.FILL)))
 
-        canvas = cv.Canvas(shapes=shapes, width=W, height=H)
-
-        return ft.Column(controls=[
-            info,
-            ft.Divider(height=6),
-            ft.Row([canvas], scroll=ft.ScrollMode.AUTO),
-        ], spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO, width=560, height=390)
+        self._trend_canvas.shapes = shapes
+        self._trend_canvas.update()
+        if self._trend_info:
+            if not vals:
+                self._trend_info.value = f"{self._trend_name}:  0 samples"
+            self._trend_info.update()
 
     def _close_trend(self) -> None:
         """关闭趋势弹窗并清空自动刷新状态。"""
@@ -336,7 +323,8 @@ class DebugTab:
             self._trend_dlg.open = False
             self._trend_dlg.update()
             self._trend_dlg = None
-        self._trend_content = None
+        self._trend_canvas = None
+        self._trend_info = None
         if self._page:
             self._page.update()
 
