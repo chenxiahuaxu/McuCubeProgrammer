@@ -15,7 +15,7 @@
   "chipPartNumber": "Part Number",
   "chipVendor": "Vendor",
   "chipTotalFlash": "Total Flash",
-  "chipRamInfo": "RAM",
+  "chipTotalRam": "Total RAM",
   "chipSectionTarget": "Target",
   "chipSectionMemory": "Memory",
   "chipRegionsTitle": "Memory Regions",

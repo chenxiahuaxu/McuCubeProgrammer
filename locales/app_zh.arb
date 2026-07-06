@@ -16,7 +16,7 @@
   "chipPartNumber": "完整料号",
   "chipVendor": "制造商",
   "chipTotalFlash": "Flash 总容量",
-  "chipRamInfo": "RAM",
+  "chipTotalRam": "RAM 总计",
   "chipSectionTarget": "目标信息",
   "chipSectionMemory": "存储概览",
   "chipRegionsTitle": "存储器区域",
