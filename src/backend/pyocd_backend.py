@@ -160,9 +160,16 @@ class PyOCDBackend(BackendABC):
     提供探针扫描、目标连接、烧录、验证的完整流程。
     """
 
+    _MAX_RECONNECT_RETRIES: int = 3
+    _RECONNECT_DELAY: float = 1.0
+
     def __init__(self) -> None:
         self._session: Session | None = None
         self._swv_reader: SWVReader | None = None
+        # 连接参数缓存，用于断线自动重连
+        self._last_target: str = ""
+        self._last_probe_uid: str | None = None
+        self._last_frequency: int = _DEFAULT_FREQUENCY
 
     def swo_start_callback(self, sys_clock: int, swo_clock: int, callback) -> None:
         """启动 SWV + 回调式文本输出。"""
@@ -255,6 +262,10 @@ class PyOCDBackend(BackendABC):
             )
 
         self._session = session
+        # 缓存连接参数，用于断线自动重连
+        self._last_target = target
+        self._last_probe_uid = probe_uid
+        self._last_frequency = frequency
 
         try:
             self._session.open()
@@ -281,6 +292,7 @@ class PyOCDBackend(BackendABC):
             ) from e
 
     def disconnect(self) -> None:
+        self._last_target = ""
         if self._session is not None:
             try:
                 self._session.close()
@@ -292,12 +304,33 @@ class PyOCDBackend(BackendABC):
     # ── Flash 操作 ───────────────────────────────────────
 
     def _require_session(self) -> Session:
-        if self._session is None:
+        if self._session is not None:
+            return self._session
+        # 尝试自动重连
+        if not self._last_target:
             raise BackendError(
                 ErrorCode.TARGET_CONNECT_FAILED,
                 "未连接目标芯片，请先调用 connect()",
             )
-        return self._session
+        _log.info("Session lost, attempting auto-reconnect...")
+        for attempt in range(1, self._MAX_RECONNECT_RETRIES + 1):
+            try:
+                self.connect(
+                    target=self._last_target,
+                    probe_uid=self._last_probe_uid,
+                    frequency=self._last_frequency,
+                )
+                _log.info("Auto-reconnect succeeded (attempt %d)", attempt)
+                return self._session  # type: ignore[return-value]
+            except Exception as e:
+                _log.warning("Auto-reconnect attempt %d failed: %s", attempt, e)
+                if attempt < self._MAX_RECONNECT_RETRIES:
+                    import time
+                    time.sleep(self._RECONNECT_DELAY)
+        raise BackendError(
+            ErrorCode.TARGET_CONNECT_FAILED,
+            f"目标连接丢失，自动重连失败（{self._MAX_RECONNECT_RETRIES} 次）",
+        )
 
     def erase_chip(self) -> None:
         session = self._require_session()
