@@ -275,15 +275,16 @@ class DebugTab:
                 ], spacing=Spacing.SM)
                 self._rtos_column.controls.append(hdr)
                 self._rtos_column.controls.append(standard_divider())
-                for t in threads:
-                    marker = "* " if t["is_current"] else "  "
-                    color = Colors.ACCENT_COPPER if t["is_current"] else Colors.TEXT_PRIMARY
+                for thread in threads:
+                    marker = "* " if thread["is_current"] else "  "
+                    color = Colors.ACCENT_COPPER if thread["is_current"] else Colors.TEXT_PRIMARY
                     self._rtos_column.controls.append(ft.Row(controls=[
-                        ft.Text(marker + t["name"], width=140, size=Font.Size.CAPTION, color=color, font_family=Font.MONO),
-                        ft.Text(t["priority"], width=70, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY),
-                        ft.Text(t["state"], width=80, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY),
-                        ft.Text(t["stack_usage"], width=120, size=Font.Size.CAPTION, color=Colors.TEXT_DIM, font_family=Font.MONO),
+                        ft.Text(marker + thread["name"], width=140, size=Font.Size.CAPTION, color=color, font_family=Font.MONO),
+                        ft.Text(thread["priority"], width=70, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY),
+                        ft.Text(thread["state"], width=80, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY),
+                        ft.Text(thread["stack_usage"], width=120, size=Font.Size.CAPTION, color=Colors.TEXT_DIM, font_family=Font.MONO),
                     ], spacing=Spacing.SM))
             self._rtos_column.update()
-        except Exception as e:
-            add_log("ERROR", f"RTOS 读取失败: {e}")
+        except Exception:
+            import traceback
+            add_log("ERROR", f"RTOS 读取失败:\n{traceback.format_exc()}")

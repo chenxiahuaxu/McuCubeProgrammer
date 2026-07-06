@@ -524,6 +524,8 @@ class PyOCDBackend(BackendABC):
                 })
             return result
         except Exception:
+            import traceback
+            _log.error("get_rtos_threads failed:\n%s", traceback.format_exc())
             return []
 
     # ── SWO ─────────────────────────────────────────────
