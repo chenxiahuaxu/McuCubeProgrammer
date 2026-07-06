@@ -16,7 +16,7 @@ from src.ui.theme import Colors, Font, Spacing
 class FlashPanel:
     """烧录操作面板。
 
-    包含擦除按钮、烧录按钮、取消按钮、进度条、状态文字。
+    包含擦除模式选择器、擦除按钮、烧录按钮、取消按钮、进度条、状态文字。
     通过回调函数注入操作逻辑。
     """
 
@@ -34,9 +34,31 @@ class FlashPanel:
         self._cancel_btn_ref = ft.Ref[ft.OutlinedButton]()
         self._progress_ref = ft.Ref[ft.ProgressBar]()
         self._status_ref = ft.Ref[ft.Text]()
+        self._erase_mode_ref = ft.Ref[ft.RadioGroup]()
+        self._erase_mode_row_ref = ft.Ref[ft.Row]()
 
     def build(self) -> ft.Control:
         """返回烧录面板控件树。"""
+        self._erase_mode = ft.RadioGroup(
+            ref=self._erase_mode_ref,
+            value="sector",
+            content=ft.Row(
+                ref=self._erase_mode_row_ref,
+                controls=[
+                    ft.Radio(
+                        value="sector",
+                        label=t("eraseModeSector"),
+                        fill_color=Colors.ACCENT_PRIMARY,
+                    ),
+                    ft.Radio(
+                        value="chip",
+                        label=t("eraseModeChip"),
+                        fill_color=Colors.ACCENT_PRIMARY,
+                    ),
+                ],
+                spacing=Spacing.LG,
+            ),
+        )
         self._erase_btn = ft.OutlinedButton(
             ref=self._erase_btn_ref,
             content=ft.Text(t("flashErase")),
@@ -72,6 +94,12 @@ class FlashPanel:
 
         return ft.Column(
             controls=[
+                ft.Text(
+                    t("eraseModeLabel"),
+                    size=Font.Size.CAPTION,
+                    color=Colors.TEXT_SECONDARY,
+                ),
+                self._erase_mode,
                 ft.Row(
                     controls=[self._erase_btn, self._flash_btn, self._cancel_btn],
                     spacing=Spacing.SM,
@@ -82,6 +110,11 @@ class FlashPanel:
             spacing=Spacing.SM,
         )
 
+    @property
+    def erase_chip(self) -> bool:
+        """True = 全片擦除, False = 仅擦除所需扇区。"""
+        return self._erase_mode_ref.current.value == "chip"
+
     # ── 公共方法 ─────────────────────────────────────────
 
     def set_running(self, running: bool) -> None:
@@ -89,12 +122,14 @@ class FlashPanel:
         self._flash_btn_ref.current.disabled = running
         self._erase_btn_ref.current.disabled = running
         self._cancel_btn_ref.current.visible = running
+        self._erase_mode_ref.current.disabled = running
         if running:
             self._progress_ref.current.value = 0.0
             self._status_ref.current.value = ""
         self._flash_btn_ref.current.update()
         self._erase_btn_ref.current.update()
         self._cancel_btn_ref.current.update()
+        self._erase_mode_ref.current.update()
         self._progress_ref.current.update()
         self._status_ref.current.update()
 

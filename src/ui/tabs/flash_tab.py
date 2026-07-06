@@ -259,7 +259,7 @@ class FlashTab:
             else None,
             base_address=base_addr,
             frequency=load_config().get("swd_frequency", 200_000),
-            erase_chip=False,
+            erase_chip=self.flash_panel.erase_chip,
             swv_config={"system_clock": 168_000_000, "swo_clock": 400_000},
         )
 
