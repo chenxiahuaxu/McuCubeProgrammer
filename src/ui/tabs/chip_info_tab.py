@@ -191,34 +191,16 @@ class ChipInfoTab:
         # 表头
         header = ft.Row(
             controls=[
-                ft.Text(
-                    t("chipRegionName"),
-                    width=140,
-                    size=Font.Size.CAPTION,
-                    weight=600,
-                    color=Colors.TEXT_SECONDARY,
-                ),
-                ft.Text(
-                    t("chipRegionAddress"),
-                    width=210,
-                    size=Font.Size.CAPTION,
-                    weight=600,
-                    color=Colors.TEXT_SECONDARY,
-                ),
-                ft.Text(
-                    t("chipRegionSize"),
-                    width=80,
-                    size=Font.Size.CAPTION,
-                    weight=600,
-                    color=Colors.TEXT_SECONDARY,
-                ),
-                ft.Text(
-                    t("chipRegionSector"),
-                    width=90,
-                    size=Font.Size.CAPTION,
-                    weight=600,
-                    color=Colors.TEXT_SECONDARY,
-                ),
+                ft.Text(t("chipRegionName"), width=140, size=Font.Size.CAPTION,
+                        weight=600, color=Colors.TEXT_SECONDARY),
+                ft.Text(t("chipRegionAddress"), width=180, size=Font.Size.CAPTION,
+                        weight=600, color=Colors.TEXT_SECONDARY),
+                ft.Text(t("chipRegionSize"), width=70, size=Font.Size.CAPTION,
+                        weight=600, color=Colors.TEXT_SECONDARY),
+                ft.Text(t("chipRegionSector"), width=70, size=Font.Size.CAPTION,
+                        weight=600, color=Colors.TEXT_SECONDARY),
+                ft.Text(t("chipRegionCount"), width=40, size=Font.Size.CAPTION,
+                        weight=600, color=Colors.TEXT_SECONDARY),
             ],
             spacing=Spacing.SM,
         )
@@ -226,39 +208,21 @@ class ChipInfoTab:
         rows: list[ft.Control] = [header, standard_divider()]
         for r in info.flash_regions:
             sector_count = r.length // r.sector_size if r.sector_size else 1
-            sector_label = f"{_fmt_size(r.sector_size)}  \u00d7{sector_count}"
-            # 子区域缩进显示
             indent = "  " if ("_0x" in r.name) else ""
             rows.append(
                 ft.Row(
                     controls=[
-                        ft.Text(
-                            indent + r.name,
-                            width=140,
-                            size=Font.Size.CAPTION,
-                            color=Colors.TEXT_PRIMARY,
-                            font_family=Font.MONO,
-                        ),
-                        ft.Text(
-                            f"{_fmt_addr(r.start)} \u2014 "
-                            f"{_fmt_addr(r.start + r.length - 1)}",
-                            width=210,
-                            size=Font.Size.CAPTION,
-                            color=Colors.TEXT_PRIMARY,
-                            font_family=Font.MONO,
-                        ),
-                        ft.Text(
-                            _fmt_size(r.length),
-                            width=80,
-                            size=Font.Size.CAPTION,
-                            color=Colors.TEXT_PRIMARY,
-                        ),
-                        ft.Text(
-                            sector_label,
-                            width=90,
-                            size=Font.Size.CAPTION,
-                            color=Colors.TEXT_PRIMARY,
-                        ),
+                        ft.Text(indent + r.name, width=140, size=Font.Size.CAPTION,
+                                color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
+                        ft.Text(f"{_fmt_addr(r.start)} \u2014 {_fmt_addr(r.start + r.length - 1)}",
+                                width=180, size=Font.Size.CAPTION,
+                                color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
+                        ft.Text(_fmt_size(r.length), width=70, size=Font.Size.CAPTION,
+                                color=Colors.TEXT_PRIMARY),
+                        ft.Text(_fmt_size(r.sector_size), width=70, size=Font.Size.CAPTION,
+                                color=Colors.TEXT_PRIMARY),
+                        ft.Text(str(sector_count), width=40, size=Font.Size.CAPTION,
+                                color=Colors.ACCENT_COPPER),
                     ],
                     spacing=Spacing.SM,
                 ),

@@ -25,6 +25,7 @@
   "chipRegionAddress": "地址范围",
   "chipRegionSize": "容量",
   "chipRegionSector": "扇区",
+  "chipRegionCount": "#",
   "probeSelectHint": "选择调试探针",
   "probeRefresh": "刷新探针列表",
   "probeNotFound": "未检测到探针",
