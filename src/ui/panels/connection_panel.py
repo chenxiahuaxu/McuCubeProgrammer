@@ -317,9 +317,14 @@ class ConnectionPanel:
             spacing=Spacing.SM,
         )
 
-        # 从 backend 同步实际连接状态
+        # 从 backend 同步实际连接状态（仅设值，不 update——控件尚未挂载）
         self._connected = self._backend.is_connected
-        self._update_conn_state()
+        if self._connected:
+            self._state_dot.bgcolor = Colors.SUCCESS
+            self._state_label.value = t("connConnected")
+            self._state_label.color = Colors.SUCCESS
+            self._connect_btn.visible = False
+            self._disconnect_btn.visible = True
         return self._conn_section
 
     def _on_connect(self, _e: ft.ControlEvent) -> None:
