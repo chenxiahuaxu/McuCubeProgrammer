@@ -24,7 +24,7 @@
   "chipRegionAddress": "Address",
   "chipRegionSize": "Size",
   "chipRegionSector": "Sector",
-  "chipRegionCount": "#",
+  "chipRegionCount": "Qty",
   "probeSelectHint": "Select Debug Probe",
   "probeRefresh": "Refresh Probe List",
   "probeNotFound": "No Probe Detected",

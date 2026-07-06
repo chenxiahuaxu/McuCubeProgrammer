@@ -206,9 +206,22 @@ class ChipInfoTab:
         )
 
         rows: list[ft.Control] = [header, standard_divider()]
+        # 子区域名 → 计数映射，用于父区域汇总
+        child_counts: dict[str, int] = {}
         for r in info.flash_regions:
-            sector_count = r.length // r.sector_size if r.sector_size else 1
+            if "_0x" in r.name:
+                parent = r.name.split("_0x")[0]
+                c = r.length // r.sector_size if r.sector_size else 1
+                child_counts[parent] = child_counts.get(parent, 0) + c
+
+        for r in info.flash_regions:
             indent = "  " if ("_0x" in r.name) else ""
+            if "_0x" in r.name or r.name not in child_counts:
+                # 子区域或无子区域：自己算
+                sector_count = r.length // r.sector_size if r.sector_size else 1
+            else:
+                # 父区域：汇总子区域计数
+                sector_count = child_counts[r.name]
             rows.append(
                 ft.Row(
                     controls=[
