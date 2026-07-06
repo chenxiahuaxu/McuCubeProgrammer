@@ -104,6 +104,10 @@ class DebugTab:
         self._resume_btn.update()
         self._reset_btn.update()
 
+    def refresh(self) -> None:
+        """公开方法：外部触发状态刷新（标签页切换时）。"""
+        self._refresh_state()
+
     def _do_halt(self) -> None:
         try:
             self._backend.halt()

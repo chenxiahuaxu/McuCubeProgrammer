@@ -214,6 +214,7 @@ class App:  # pylint: disable=too-few-public-methods
             chip_info_tab = ChipInfoTab(backend=self.flash_controller._backend)
             self.chip_info_tab = chip_info_tab
             debug_tab = DebugTab(backend=self.flash_controller._backend)
+            self.debug_tab = debug_tab
             log_tab = LogTab(log_view=self.log_view, page=self.page)
             settings_tab = SettingsTab(page=self.page)
             about_tab = AboutTab()
@@ -308,8 +309,11 @@ class App:  # pylint: disable=too-few-public-methods
         return self.tabs
 
     def _on_tab_change(self, e: ft.ControlEvent) -> None:
-        """标签页切换时自动刷新芯片信息面板。"""
-        if self.tabs.selected_index == 3 and hasattr(self, "chip_info_tab"):
+        """标签页切换时自动刷新调试/芯片信息面板。"""
+        idx = self.tabs.selected_index
+        if idx == 1 and hasattr(self, "debug_tab"):
+            self.debug_tab.refresh()
+        if idx == 3 and hasattr(self, "chip_info_tab"):
             self.chip_info_tab.refresh()
 
     @staticmethod
