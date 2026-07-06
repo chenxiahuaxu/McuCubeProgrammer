@@ -14,6 +14,8 @@
   "chipDevice": "Device",
   "chipPartNumber": "Part Number",
   "chipVendor": "Vendor",
+  "chipDapIdcode": "DAP IDCODE",
+  "chipCore": "Core",
   "chipTotalFlash": "Total Flash",
   "chipTotalRam": "Total RAM",
   "chipSectionTarget": "Target",

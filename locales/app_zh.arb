@@ -15,6 +15,8 @@
   "chipDevice": "设备型号",
   "chipPartNumber": "完整料号",
   "chipVendor": "制造商",
+  "chipDapIdcode": "DAP IDCODE",
+  "chipCore": "内核",
   "chipTotalFlash": "Flash 总容量",
   "chipTotalRam": "RAM 总计",
   "chipSectionTarget": "目标信息",
