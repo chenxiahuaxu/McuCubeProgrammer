@@ -16,7 +16,6 @@ from src.logic.probe_manager import ProbeManager
 from src.logic.target_manager import TargetManager
 from src.ui.theme import Colors, Font, Spacing
 from src.utils.config import load as cfg_load, save as cfg_save
-from src.utils.logger import add_log
 
 PANEL_WIDTH: int = 260
 PANEL_MIN: int = 200
@@ -351,20 +350,13 @@ class ConnectionPanel:
         frequency = cfg.get("swd_frequency", 200_000)
 
         try:
-            add_log("INFO", f"[Connect] target={target_name} probe={probe.unique_id} freq={frequency}")
-            info = self._backend.connect(
+            self._backend.connect(
                 target=target_name,
                 probe_uid=probe.unique_id,
                 frequency=frequency,
             )
-            add_log("INFO", (
-                f"[Connect] OK — name={info.name} part={info.part_number} "
-                f"flash={info.total_flash_size} ram={info.ram_start:#010x}+{info.ram_size} "
-                f"regions={len(info.flash_regions)}"
-            ))
             self._connected = True
         except Exception as ex:
-            add_log("ERROR", f"[Connect] FAILED: {ex}")
             self.page.snack_bar = ft.SnackBar(
                 content=ft.Text(f"{t('connFailed')}: {ex}"),
                 bgcolor=Colors.ERROR,
@@ -376,7 +368,6 @@ class ConnectionPanel:
 
     def _on_disconnect(self, _e: ft.ControlEvent) -> None:
         """断开目标芯片连接。"""
-        add_log("INFO", "[Connect] disconnecting...")
         try:
             self._backend.disconnect()
         except Exception:
