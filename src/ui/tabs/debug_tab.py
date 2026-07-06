@@ -254,6 +254,7 @@ class DebugTab:
             add_log("ERROR", f"ELF 解析失败: {e}")
 
     def _show_symbols(self) -> None:
+        add_log("INFO", f"查看符号被点击，符号数: {len(self._elf_symbols_data)}, page: {self._page is not None}")
         if not self._elf_symbols_data:
             add_log("WARN", "符号表为空")
             return
@@ -278,6 +279,7 @@ class DebugTab:
             )
             self._page.dialog = dlg
             self._page.update()
+            add_log("INFO", "符号弹窗已设置")
         except Exception as e:
             add_log("ERROR", f"弹窗失败: {e}")
 
