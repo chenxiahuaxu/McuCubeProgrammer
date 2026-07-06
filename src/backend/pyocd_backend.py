@@ -487,6 +487,14 @@ class PyOCDBackend(BackendABC):
 
         # 适配器：symbol_decoder.get_symbol_for_name → get_symbol_value
         sd = session.target.elf.symbol_decoder
+
+        # 诊断：列出所有 FreeRTOS 符号的查找结果
+        from pyocd.rtos.freertos import FreeRTOSThreadProvider as _FRT
+        print("=== RTOS symbol lookup ===")
+        for s in _FRT.FREERTOS_SYMBOLS:
+            sym = sd.get_symbol_for_name(s)
+            print(f"  {s} → {f'0x{sym.address:08X}' if sym else 'NOT FOUND'}")
+
         class _Sym:
             def get_symbol_value(self, name: str) -> int | None:
                 sym = sd.get_symbol_for_name(name)
@@ -507,7 +515,9 @@ class PyOCDBackend(BackendABC):
                     mod = __import__(module_path, fromlist=[class_name])
                     provider_cls = getattr(mod, class_name)
                     provider = provider_cls(session.target)
-                    if provider.init(_Sym()):
+                    ok = provider.init(_Sym())
+                    print(f"RTOS {name} init: {'OK' if ok else 'FAILED'}")
+                    if ok:
                         _log.info("RTOS detected: %s", name)
                         break
                     provider = None
