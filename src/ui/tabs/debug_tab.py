@@ -269,9 +269,10 @@ class DebugTab:
             else:
                 hdr = ft.Row(controls=[
                     ft.Text(t("debugWatchName"), width=140, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
-                    ft.Text("Priority", width=70, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
+                    ft.Text("Prio", width=50, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
                     ft.Text("State", width=80, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
-                    ft.Text("Stack", width=120, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
+                    ft.Text("SP", width=100, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
+                    ft.Text("TCB", width=100, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
                 ], spacing=Spacing.SM)
                 self._rtos_column.controls.append(hdr)
                 self._rtos_column.controls.append(standard_divider())
@@ -280,9 +281,10 @@ class DebugTab:
                     color = Colors.ACCENT_COPPER if thread["is_current"] else Colors.TEXT_PRIMARY
                     self._rtos_column.controls.append(ft.Row(controls=[
                         ft.Text(marker + thread["name"], width=140, size=Font.Size.CAPTION, color=color, font_family=Font.MONO),
-                        ft.Text(thread["priority"], width=70, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY),
+                        ft.Text(thread["priority"], width=50, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY),
                         ft.Text(thread["state"], width=80, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY),
-                        ft.Text(thread["stack_usage"], width=120, size=Font.Size.CAPTION, color=Colors.TEXT_DIM, font_family=Font.MONO),
+                        ft.Text(thread["stack_usage"], width=100, size=Font.Size.CAPTION, color=Colors.TEXT_DIM, font_family=Font.MONO),
+                        ft.Text(thread.get("tcb", "—"), width=100, size=Font.Size.CAPTION, color=Colors.TEXT_DIM, font_family=Font.MONO),
                     ], spacing=Spacing.SM))
             self._rtos_column.update()
         except Exception:

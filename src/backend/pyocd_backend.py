@@ -543,7 +543,6 @@ class PyOCDBackend(BackendABC):
                         pass
             result: list[dict] = []
             states = {1: "Running", 2: "Ready", 3: "Blocked", 4: "Suspended", 5: "Deleted"}
-            add_log("INFO", "=== RTOS threads ===")
             for thread in threads:
                 try: sp = thread.get_stack_pointer()
                 except Exception: sp = None
@@ -551,16 +550,14 @@ class PyOCDBackend(BackendABC):
                 except Exception: s = None
                 try: p = thread.priority
                 except Exception: p = None
-                add_log("INFO",
-                    f"  [{type(thread).__name__}] name={thread.name!r} "
-                    f"pri={p!r} state={s!r} sp={sp} "
-                    f"cur={thread.is_current}")
-                sp_str = f"SP=0x{sp:08X}" if sp is not None else "—"
+                sp_str = f"0x{sp:08X}" if sp is not None else "—"
                 st = states.get(s, str(s)) if s is not None else "—"
                 pr = str(p) if p is not None else "—"
+                tcb = f"0x{thread.unique_id:08X}" if thread.unique_id else "—"
                 result.append({
                     "name": thread.name, "priority": pr,
                     "state": st, "stack_usage": sp_str,
+                    "tcb": tcb,
                     "is_current": thread.is_current, "unique_id": thread.unique_id,
                 })
             return result
