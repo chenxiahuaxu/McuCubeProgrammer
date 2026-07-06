@@ -35,6 +35,7 @@ class TargetManager:
         self._backend: BackendABC = backend
         self._selected_target: str | None = None
         self._installed_packs: list[str] = []
+        self._all_targets_cache: list[tuple[str, str]] | None = None
 
     def list_builtin_targets(self) -> list[tuple[str, str]]:
         """获取 pyOCD 内置芯片目标列表。
@@ -104,11 +105,18 @@ class TargetManager:
             return []
 
     def list_all_targets(self) -> list[tuple[str, str]]:
-        """获取所有可用目标（内置 + Pack），去重后按名称排序。"""
+        """获取所有可用目标（内置 + Pack），去重后按名称排序。结果缓存。"""
+        if self._all_targets_cache is not None:
+            return self._all_targets_cache
         builtin = dict(self.list_builtin_targets())
         packs = dict(self.list_installed_pack_targets())
         merged = {**builtin, **packs}
-        return sorted(merged.items(), key=lambda x: x[0])
+        self._all_targets_cache = sorted(merged.items(), key=lambda x: x[0])
+        return self._all_targets_cache
+
+    def invalidate_targets_cache(self) -> None:
+        """安装新 Pack 后清除缓存，下次 list_all_targets 重新加载。"""
+        self._all_targets_cache = None
 
     def search_targets(self, query: str) -> list[tuple[str, str]]:
         """按名称模糊搜索芯片目标。"""
@@ -135,6 +143,7 @@ class TargetManager:
                 pack_name = pack_path.replace("\\", "/").split("/")[-1]
                 self._installed_packs.append(pack_name)
                 add_log("DONE", f"Pack 安装成功: {pack_name}")
+                self.invalidate_targets_cache()
                 return True
             add_log("ERROR", f"Pack 安装失败: {result.stderr.strip()}")
             return False
@@ -160,6 +169,7 @@ class TargetManager:
             if result.returncode == 0:
                 self._installed_packs.append(pack_name)
                 add_log("DONE", f"Pack 安装成功: {pack_name}")
+                self.invalidate_targets_cache()
                 return True
             add_log("ERROR", f"Pack 安装失败: {result.stderr.strip()}")
             return False
