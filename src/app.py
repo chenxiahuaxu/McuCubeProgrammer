@@ -204,7 +204,6 @@ class App:  # pylint: disable=too-few-public-methods
             self.page.add(
                 ft.Stack(
                     controls=[
-                        self.connection_panel.build(),
                         ft.Container(
                             content=self._build_tabs([
                                 self.flash_tab.build(),
@@ -212,11 +211,10 @@ class App:  # pylint: disable=too-few-public-methods
                                 log_tab.build(),
                                 settings_tab.build(),
                             ]),
-                            left=PANEL_WIDTH,
-                            right=0,
-                            top=0,
-                            bottom=0,
+                            expand=True,
+                            margin=ft.Margin(left=PANEL_WIDTH, top=0, right=0, bottom=0),
                         ),
+                        self.connection_panel.build(),
                     ],
                     expand=True,
                 )
