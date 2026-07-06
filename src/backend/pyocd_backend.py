@@ -478,7 +478,6 @@ class PyOCDBackend(BackendABC):
 
     def get_rtos_threads(self, elf_path: str = "") -> list[dict]:
         session = self._require_session()
-        # 构建符号提供器
         symbol_map: dict[str, int] = {}
         if elf_path:
             try:
@@ -496,31 +495,29 @@ class PyOCDBackend(BackendABC):
             from pyocd.rtos.freertos import FreeRTOSThreadProvider
             provider = FreeRTOSThreadProvider(session.target)
             if not provider.init(_SymbolProvider()):
-                return []  # 符号不足，可能未运行 FreeRTOS
+                # 诊断缺哪些符号
+                required = FreeRTOSThreadProvider.FREERTOS_SYMBOLS
+                found = [n for n in required if n in symbol_map]
+                missing = [n for n in required if n not in symbol_map]
+                _log.warning("FreeRTOS init failed. Found: %s. Missing: %s. ELF symbols total: %d",
+                            found, missing, len(symbol_map))
+                return []
             provider.read_from_target = True
             provider.update_threads()
             threads = provider.get_threads()
-            result = []
+            result: list[dict] = []
             for thread in threads:
-                desc: str = getattr(thread, "description", "") or ""
-                priority = ""
-                state = ""
-                stack_usage = ""
+                desc = getattr(thread, "description", "") or ""
+                priority = state = stack_usage = ""
                 for part in desc.split(";"):
                     part = part.strip()
-                    if "Priority" in part:
-                        priority = part.split(":")[-1].strip()
-                    elif "State" in part:
-                        state = part.split(":")[-1].strip()
-                    elif "Stack" in part:
-                        stack_usage = part.split(":")[-1].strip()
+                    if "Priority" in part: priority = part.split(":")[-1].strip()
+                    elif "State" in part: state = part.split(":")[-1].strip()
+                    elif "Stack" in part: stack_usage = part.split(":")[-1].strip()
                 result.append({
-                    "name": thread.name,
-                    "priority": priority,
-                    "state": state,
-                    "stack_usage": stack_usage,
-                    "is_current": thread.is_current,
-                    "unique_id": thread.unique_id,
+                    "name": thread.name, "priority": priority,
+                    "state": state, "stack_usage": stack_usage,
+                    "is_current": thread.is_current, "unique_id": thread.unique_id,
                 })
             return result
         except Exception:
