@@ -190,6 +190,7 @@ class App:  # pylint: disable=too-few-public-methods
                     on_resize=self._on_panel_resize,
                 )
             from src.ui.tabs.about_tab import AboutTab
+            from src.ui.tabs.chip_info_tab import ChipInfoTab
             from src.ui.tabs.flash_tab import FlashTab
             from src.ui.tabs.log_tab import LogTab
             from src.ui.tabs.settings_tab import SettingsTab
@@ -208,6 +209,7 @@ class App:  # pylint: disable=too-few-public-methods
                 probe_manager=self.probe_manager,
                 target_manager=self.target_manager,
             )
+            chip_info_tab = ChipInfoTab(backend=self.flash_controller._backend)
             log_tab = LogTab(log_view=self.log_view, page=self.page)
             settings_tab = SettingsTab(page=self.page)
             about_tab = AboutTab()
@@ -233,6 +235,7 @@ class App:  # pylint: disable=too-few-public-methods
                     content=self._build_tabs([
                         self.flash_tab.build(),
                         self.swo_tab.build(),
+                        chip_info_tab.build(),
                         log_tab.build(),
                         settings_tab.build(),
                         about_tab.build(),
@@ -258,6 +261,7 @@ class App:  # pylint: disable=too-few-public-methods
         tab_labels = [
             t("tabFlash"),
             t("tabSwo"),
+            t("tabChip"),
             t("tabLog"),
             t("tabSettings"),
             t("tabAbout"),
@@ -265,6 +269,7 @@ class App:  # pylint: disable=too-few-public-methods
         tab_icons = [
             ft.Icons.FLASH_ON,
             ft.Icons.TERMINAL,
+            ft.Icons.MEMORY,
             ft.Icons.LIST_ALT,
             ft.Icons.SETTINGS,
             ft.Icons.INFO,
