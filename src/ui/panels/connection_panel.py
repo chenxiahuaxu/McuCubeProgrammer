@@ -12,9 +12,8 @@ import flet as ft
 from src.i18n import t
 from src.logic.probe_manager import ProbeManager
 from src.logic.target_manager import TargetManager
-from src.ui.theme import Colors, Font, Spacing, card_container
+from src.ui.theme import Colors, Font, Spacing
 from src.utils.config import load as cfg_load, save as cfg_save
-from src.utils.logger import add_log
 
 PANEL_WIDTH: int = 240
 
