@@ -17,10 +17,9 @@ from src.utils.logger import add_log
 class DebugTab:
     """调试标签页 — 暂停 / 继续 / 复位 + 变量监控。"""
 
-    def __init__(self, backend: BackendABC, loop: asyncio.AbstractEventLoop, page: ft.Page):
+    def __init__(self, backend: BackendABC, loop: asyncio.AbstractEventLoop):
         self._backend = backend
         self._loop = loop
-        self._page = page
         self._state_text: ft.Text | None = None
         self._halt_btn: ft.ElevatedButton | None = None
         self._resume_btn: ft.ElevatedButton | None = None
@@ -179,17 +178,16 @@ class DebugTab:
 
     # ── ELF 符号加载 ─────────────────────────────────────
     def _pick_elf(self) -> None:
-        picker = ft.FilePicker(on_result=lambda e: self._on_elf_picked(e))
-        self._page.overlay.append(picker)
-        self._page.update()
-        picker.pick_files(
+        self._loop.create_task(self._do_pick_elf())
+
+    async def _do_pick_elf(self) -> None:
+        picker = ft.FilePicker()
+        files = await picker.pick_files(
             dialog_title="Select ELF file",
             allowed_extensions=["elf", "axf"],
         )
-
-    def _on_elf_picked(self, e: ft.FilePickerResultEvent) -> None:
-        if e.files and e.files[0].path:
-            self._elf_path.value = e.files[0].path
+        if files and files[0].path:
+            self._elf_path.value = files[0].path
             self._elf_path.update()
 
     def _load_elf(self) -> None:

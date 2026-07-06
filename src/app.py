@@ -213,7 +213,7 @@ class App:  # pylint: disable=too-few-public-methods
             )
             chip_info_tab = ChipInfoTab(backend=self.flash_controller._backend)
             self.chip_info_tab = chip_info_tab
-            debug_tab = DebugTab(backend=self.flash_controller._backend, loop=self.loop, page=self.page)
+            debug_tab = DebugTab(backend=self.flash_controller._backend, loop=self.loop)
             self.debug_tab = debug_tab
             log_tab = LogTab(log_view=self.log_view, page=self.page)
             settings_tab = SettingsTab(page=self.page)
