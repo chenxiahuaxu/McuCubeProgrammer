@@ -509,10 +509,28 @@ class PyOCDBackend(BackendABC):
         session.target.elf = _ElfWrapper()
 
         try:
-            from pyocd.rtos.freertos import FreeRTOSThreadProvider
-            provider = FreeRTOSThreadProvider(session.target)
-            if not provider.init(_SymbolAdapter()):
-                _log.warning("FreeRTOS init failed. ELF: %s", elf_path)
+            # 按顺序尝试所有已知 RTOS provider，第一个 init 成功的即采用
+            providers = [
+                ("FreeRTOS", "pyocd.rtos.freertos", "FreeRTOSThreadProvider"),
+                ("RTX5", "pyocd.rtos.rtx5", "RTX5ThreadProvider"),
+                ("ThreadX", "pyocd.rtos.threadx", "ThreadXThreadProvider"),
+                ("Zephyr", "pyocd.rtos.zephyr", "ZephyrThreadProvider"),
+                ("Argon", "pyocd.rtos.argon", "ArgonThreadProvider"),
+            ]
+            provider = None
+            for name, module_path, class_name in providers:
+                try:
+                    mod = __import__(module_path, fromlist=[class_name])
+                    provider_cls = getattr(mod, class_name)
+                    provider = provider_cls(session.target)
+                    if provider.init(_SymbolAdapter()):
+                        _log.info("RTOS detected: %s", name)
+                        break
+                    provider = None
+                except Exception:
+                    continue
+
+            if provider is None:
                 return []
             provider.read_from_target = True
             provider.update_threads()
