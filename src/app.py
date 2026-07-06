@@ -50,7 +50,7 @@ class App:  # pylint: disable=too-few-public-methods
 
         self._init_backend()
         self._init_log_view()
-        self._build_tabs()
+        self._build_ui()
 
         # 启动日志写入 UI LogView
         add_log("INFO", "=" * 40)
@@ -160,36 +160,27 @@ class App:  # pylint: disable=too-few-public-methods
         """清除并重建所有标签页，保留当前选中的标签索引。"""
         selected = self.tabs.selected_index if hasattr(self, "tabs") else 0
         self.page.controls.clear()
-        self._build_tabs()
+        self._build_ui()
         self.tabs.selected_index = selected
         self.page.update()
 
     # ── UI 构建 ───────────────────────────────────────────
 
-    def _build_tabs(self) -> None:
-        tab_labels = [
-            t("tabFlash"),
-            t("tabProbe"),
-            t("tabSwo"),
-            t("tabLog"),
-            t("tabSettings"),
-        ]
-        tab_icons = [
-            ft.Icons.FLASH_ON,
-            ft.Icons.USB,
-            ft.Icons.TERMINAL,
-            ft.Icons.LIST_ALT,
-            ft.Icons.SETTINGS,
-        ]
-
+    def _build_ui(self) -> None:
+        """构建完整 UI：持久连接面板 + 标签页。"""
         if self.probe_manager and self.target_manager and self.flash_controller:
+            from src.ui.panels.connection_panel import ConnectionPanel
             from src.ui.tabs.flash_tab import FlashTab
             from src.ui.tabs.log_tab import LogTab
-            from src.ui.tabs.probe_tab import ProbeTab
             from src.ui.tabs.settings_tab import SettingsTab
             from src.ui.tabs.swo_tab import SwoTab
 
-            flash_tab = FlashTab(
+            self.connection_panel = ConnectionPanel(
+                page=self.page,
+                probe_manager=self.probe_manager,
+                target_manager=self.target_manager,
+            )
+            self.flash_tab = FlashTab(
                 page=self.page,
                 probe_manager=self.probe_manager,
                 target_manager=self.target_manager,
@@ -197,38 +188,50 @@ class App:  # pylint: disable=too-few-public-methods
                 log_view=self.log_view,
                 loop=self.loop,
             )
-            self.flash_tab = flash_tab
-            probe_tab = ProbeTab(probe_manager=self.probe_manager)
-            swo_tab = SwoTab(
+            self.swo_tab = SwoTab(
                 backend=self.flash_controller._backend,
                 loop=self.loop,
                 probe_manager=self.probe_manager,
                 target_manager=self.target_manager,
             )
-            self.swo_tab = swo_tab
             log_tab = LogTab(log_view=self.log_view, page=self.page)
             settings_tab = SettingsTab(page=self.page)
 
-            tab_contents = [
-                flash_tab.build(),
-                probe_tab.build(),
-                swo_tab.build(),
+            self.page.add(self.connection_panel.build())
+            self._build_tabs([
+                self.flash_tab.build(),
+                self.swo_tab.build(),
                 log_tab.build(),
                 settings_tab.build(),
-            ]
+            ])
         else:
-            tab_texts = [
-                t("placeholderPyocdNotAvailable", platform=App.platform_name),
-                f"Probe — 探针信息区域",
-                "Log — 日志输出区域",
-                "Settings — 配置与关于",
-            ]
-            tab_contents = [self._placeholder_content(tx) for tx in tab_texts]
+            self._build_tabs([
+                self._placeholder_content(
+                    t("placeholderPyocdNotAvailable", platform=App.platform_name)
+                ),
+                self._placeholder_content("Log"),
+                self._placeholder_content("Settings"),
+            ])
+
+    def _build_tabs(self, tab_contents: list[ft.Control]) -> None:
+        tab_labels = [
+            t("tabFlash"),
+            t("tabSwo"),
+            t("tabLog"),
+            t("tabSettings"),
+        ]
+        tab_icons = [
+            ft.Icons.FLASH_ON,
+            ft.Icons.TERMINAL,
+            ft.Icons.LIST_ALT,
+            ft.Icons.SETTINGS,
+        ]
+        length = len(tab_labels)
 
         self.tabs = ft.Tabs(
             selected_index=0,
             animation_duration=300,
-            length=5,
+            length=length,
             expand=True,
             content=ft.Column(
                 expand=True,
@@ -236,7 +239,7 @@ class App:  # pylint: disable=too-few-public-methods
                     ft.TabBar(
                         tabs=[
                             ft.Tab(label=tab_labels[i], icon=tab_icons[i])
-                            for i in range(5)
+                            for i in range(length)
                         ],
                     ),
                     ft.TabBarView(
@@ -319,4 +322,4 @@ class App:  # pylint: disable=too-few-public-methods
             uid = saved_uid if saved_uid in existing_uids else probes[0].unique_id
             if saved_uid and saved_uid != uid:
                 add_log("WARN", f"上次探针不在线，使用 {uid[:12]}...")
-            self.flash_tab.set_selected_probe(uid)
+            self.connection_panel.select_probe(uid)
