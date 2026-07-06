@@ -122,7 +122,6 @@ class ChipInfoTab:
     # ── 目标信息卡片 ─────────────────────────────────────
     def _build_target_card(self, info: TargetInfo) -> None:
         rows = [
-            self._info_row(t("chipDevice"), info.name),
             self._info_row(t("chipPartNumber"), info.part_number or "\u2014"),
             self._info_row(t("chipVendor"), info.vendor or "\u2014"),
             self._info_row(t("chipDapIdcode"), info.dap_idcode or "\u2014"),
