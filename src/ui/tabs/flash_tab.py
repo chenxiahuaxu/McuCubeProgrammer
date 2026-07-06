@@ -1,7 +1,6 @@
-"""Flash 标签页 — 主烧录工作流编排。
+"""Flash 标签页 — 固件选择 + 烧录工作流。
 
-组装 ProbeSelector、TargetSelector、FirmwareFilePicker、FlashPanel，
-并将用户操作串联为完整的烧录流程。是唯一允许导入逻辑层的 UI 组件。
+探针/芯片选择已移至持久连接面板，此标签页只负责固件和烧录操作。
 """
 
 from __future__ import annotations
@@ -18,20 +17,17 @@ from src.logic.target_manager import TargetManager
 from src.ui.components.file_picker import FirmwareFilePicker
 from src.ui.components.flash_panel import FlashPanel
 from src.ui.components.log_view import LogView
-from src.ui.components.probe_selector import ProbeSelector
-from src.ui.components.target_selector import TargetSelector
 from src.ui.theme import Colors, section_divider, Spacing
 from src.utils.config import load as load_config, save
 
 
 class FlashTab:
-    """Flash 标签页 — 烧录工作流编排器。
+    """Flash 标签页 — 固件选择 + 烧录操作。
 
     职责:
-      - 组装子组件
-      - 连接回调（探针选择→刷新芯片列表→…→烧录）
-      - 包装 Pack 安装流程（FilePicker + 确认对话框 + 后台安装）
-      - 将 FlashController 的进度回调桥接到 UI 主线程
+      - 固件文件选择 + 基地址配置
+      - 擦除/烧录操作编排
+      - FlashController 进度回调桥接到 UI
     """
 
     def __init__(  # pylint: disable=too-many-positional-arguments
@@ -59,15 +55,6 @@ class FlashTab:
         self._base_address_locked: bool = False
 
         # ── 子组件 ──
-        self.probe_selector = ProbeSelector(
-            on_refresh=probe_manager.scan_probes,
-            on_probe_selected=self._on_probe_selected,
-        )
-        self.target_selector = TargetSelector(
-            targets=[],
-            on_target_selected=self._on_target_selected,
-            on_pick_pack=self._on_pick_pack,
-        )
         self.file_picker = FirmwareFilePicker(
             page=page,
             on_file_selected=self._on_file_selected,
@@ -78,9 +65,6 @@ class FlashTab:
             on_cancel=self._on_cancel_click,
         )
 
-        # ── Pack 安装用 FilePicker ──
-        self._pack_picker = ft.FilePicker()
-
     # ── 构建 ─────────────────────────────────────────────
 
     def build(self) -> ft.Control:
@@ -89,10 +73,6 @@ class FlashTab:
                 tight=True,
                 spacing=Spacing.LG,
                 controls=[
-                    self.probe_selector.build(),
-                    section_divider(),
-                    self.target_selector.build(),
-                    section_divider(),
                     self.file_picker.build(),
                     section_divider(),
                     self._build_base_address(),
@@ -104,21 +84,7 @@ class FlashTab:
             expand=True,
         )
 
-    # ── 回调 ─────────────────────────────────────────────
-
-    def _on_probe_selected(self, unique_id: str) -> None:
-        self.probe_manager.select_probe(unique_id)
-        probe = self.probe_manager.get_selected_probe()
-        if probe:
-            self.log_view.add_log("INFO", f"已选择探针: {probe.description}")
-        targets = self.target_manager.list_all_targets()
-        self.target_selector.update_targets(targets)
-        self._save_selections()
-
-    def _on_target_selected(self, name: str) -> None:
-        self.target_manager.select_target(name)
-        self.log_view.add_log("INFO", f"已选择芯片: {name}")
-        self._save_selections()
+    # ── 固件选择 ─────────────────────────────────────────
 
     def _on_file_selected(self, path: str) -> None:
         self.log_view.add_log("INFO", f"已选择固件: {path}")
@@ -150,58 +116,12 @@ class FlashTab:
         self._save_selections()
 
     def _save_selections(self) -> None:
-        """保存当前所有选择到配置文件。"""
+        """保存固件路径和基地址到配置文件。"""
         cfg = load_config()
-        if self.probe_manager.get_selected_probe():
-            cfg["probe_uid"] = self.probe_manager.get_selected_probe().unique_id
-        if self.target_manager.get_selected_target():
-            cfg["target_name"] = self.target_manager.get_selected_target()
         if self.file_picker.get_path():
             cfg["firmware_path"] = self.file_picker.get_path()
         cfg["base_address"] = self._base_address
         save(cfg)
-
-    async def _on_pick_pack(self) -> None:
-        files = await self._pack_picker.pick_files(
-            dialog_title=t("flashPackDialogTitle"),
-            file_type=ft.FilePickerFileType.CUSTOM,
-            allowed_extensions=["pack"],
-            allow_multiple=False,
-        )
-        if files and len(files) > 0:
-            pack_path = files[0].path or ""
-            self._confirm_pack_install(pack_path)
-
-    def _confirm_pack_install(self, pack_path: str) -> None:
-        def close_dlg():
-            dlg.open = False
-            self.page.update()
-
-        async def do_install():
-            close_dlg()
-            self.log_view.add_log("INFO", f"正在安装 Pack: {pack_path}")
-            self.target_selector.set_loading(True)
-            success = await asyncio.to_thread(
-                self.target_manager.install_pack, pack_path
-            )
-            self.target_selector.set_loading(False)
-            if success:
-                targets = self.target_manager.list_all_targets()
-                self.target_selector.update_targets(targets)
-
-        dlg = ft.AlertDialog(
-            modal=True,
-            title=ft.Text(t("flashPackInstallTitle")),
-            content=ft.Text(t("flashPackConfirm") + f"\n{pack_path}"),
-            actions=[
-                ft.TextButton(t("flashCancel"), on_click=lambda e: close_dlg()),
-                ft.FilledButton(t("flashPackInstall"), on_click=lambda e: self.page.run_task(do_install)),
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
-        )
-        self.page.dialog = dlg
-        dlg.open = True
-        self.page.update()
 
     # ── 操作 ─────────────────────────────────────────────
 
@@ -320,38 +240,3 @@ class FlashTab:
         if not self.file_picker.get_path():
             return t("flashValidateFirmware")
         return None
-
-    def set_selected_probe(self, unique_id: str) -> None:
-        """自动选择探针并刷新芯片列表（启动时自动扫描后调用）。"""
-        self.probe_manager.select_probe(unique_id)
-        # 先填充探针下拉框，再选中
-        probes = self.probe_manager.get_probes()
-        dd = self.probe_selector._dropdown_ref.current
-        if dd:
-            dd.options.clear()
-            for p in probes:
-                dd.options.append(
-                    ft.dropdown.Option(
-                        key=p.unique_id,
-                        text=f"[{p.probe_type.upper()}] {p.description}",
-                    )
-                )
-            dd.value = unique_id
-            dd.disabled = False
-            dd.hint_text = t("probeSelectHint")
-            dd.update()
-        self.log_view.add_log("INFO", f"自动恢复探针: {unique_id[:12]}...")
-        targets = self.target_manager.list_all_targets()
-        self.target_selector.update_targets(targets)
-        # 恢复上次选择的芯片
-        saved_target = load_config().get("target_name")
-        if saved_target:
-            target_names = [t[0] for t in targets]
-            if saved_target in target_names:
-                self.target_selector.set_selected(saved_target)
-                self.target_manager.select_target(saved_target)
-                self.log_view.add_log("INFO", f"自动恢复芯片: {saved_target}")
-            else:
-                self.log_view.add_log("WARN", f"上次芯片 {saved_target} 不在当前列表中")
-        self.file_picker.restore_last()
-        self._save_selections()
