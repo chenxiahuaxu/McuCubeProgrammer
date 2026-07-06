@@ -159,6 +159,7 @@ class App:  # pylint: disable=too-few-public-methods
     def _rebuild_tabs(self) -> None:
         """重建标签页内容（语言切换时调用），保留侧边栏状态。"""
         selected = self.tabs.selected_index if hasattr(self, "tabs") else 0
+        self.page.overlay.clear()
         self.page.controls.clear()
         self._build_ui()
         if hasattr(self, "tabs"):
@@ -199,24 +200,27 @@ class App:  # pylint: disable=too-few-public-methods
             log_tab = LogTab(log_view=self.log_view, page=self.page)
             settings_tab = SettingsTab(page=self.page)
 
-            self.page.add(
-                ft.Row(
-                    controls=[
-                        self.connection_panel.build(),
-                        ft.Container(
-                            content=self._build_tabs([
-                                self.flash_tab.build(),
-                                self.swo_tab.build(),
-                                log_tab.build(),
-                                settings_tab.build(),
-                            ]),
-                            expand=True,
-                            clip_behavior=ft.ClipBehavior.HARD_EDGE,
-                        ),
-                    ],
-                    expand=True,
-                    spacing=0,
+            from src.ui.panels.connection_panel import PANEL_WIDTH
+
+            # 侧边栏: overlay 在左侧 (浮层，不受 page.padding 影响)
+            self.page.overlay.append(
+                ft.Container(
+                    content=self.connection_panel.build(),
+                    left=0,
+                    top=0,
+                    bottom=0,
+                    width=PANEL_WIDTH,
                 )
+            )
+            # 主体: page 内容区左边留出 240px
+            self.page.padding = ft.Padding(left=PANEL_WIDTH, top=0, right=0, bottom=0)
+            self.page.add(
+                self._build_tabs([
+                    self.flash_tab.build(),
+                    self.swo_tab.build(),
+                    log_tab.build(),
+                    settings_tab.build(),
+                ])
             )
         else:
             self.page.add(self._build_tabs([
