@@ -13,7 +13,7 @@ import asyncio
 import flet as ft
 
 from src.i18n import get_l10n, t
-from src.ui.theme import APP_TITLE, APP_VERSION, create_dark_theme
+from src.ui.theme import APP_TITLE, APP_VERSION, Colors, create_dark_theme
 from src.utils.logger import add_log, Logger as _Logger
 
 
@@ -157,17 +157,20 @@ class App:  # pylint: disable=too-few-public-methods
         self._rebuild_tabs()
 
     def _rebuild_tabs(self) -> None:
-        """清除并重建所有标签页，保留当前选中的标签索引。"""
+        """清除并重建标签页内容，保留侧边栏和选中索引。"""
         selected = self.tabs.selected_index if hasattr(self, "tabs") else 0
+        # 找到旧的 Tabs 控件并替换
+        page_controls = list(self.page.controls)
         self.page.controls.clear()
         self._build_ui()
-        self.tabs.selected_index = selected
+        if hasattr(self, "tabs"):
+            self.tabs.selected_index = selected
         self.page.update()
 
     # ── UI 构建 ───────────────────────────────────────────
 
     def _build_ui(self) -> None:
-        """构建完整 UI：持久连接面板 + 标签页。"""
+        """构建完整 UI：侧边连接面板 + 标签页。"""
         if self.probe_manager and self.target_manager and self.flash_controller:
             from src.ui.panels.connection_panel import ConnectionPanel
             from src.ui.tabs.flash_tab import FlashTab
@@ -197,23 +200,32 @@ class App:  # pylint: disable=too-few-public-methods
             log_tab = LogTab(log_view=self.log_view, page=self.page)
             settings_tab = SettingsTab(page=self.page)
 
-            self.page.add(self.connection_panel.build())
-            self._build_tabs([
-                self.flash_tab.build(),
-                self.swo_tab.build(),
-                log_tab.build(),
-                settings_tab.build(),
-            ])
+            self.page.add(
+                ft.Row(
+                    controls=[
+                        self.connection_panel.build(),
+                        ft.VerticalDivider(width=1, color=Colors.DIVIDER),
+                        self._build_tabs([
+                            self.flash_tab.build(),
+                            self.swo_tab.build(),
+                            log_tab.build(),
+                            settings_tab.build(),
+                        ]),
+                    ],
+                    expand=True,
+                    spacing=0,
+                )
+            )
         else:
-            self._build_tabs([
+            self.page.add(self._build_tabs([
                 self._placeholder_content(
                     t("placeholderPyocdNotAvailable", platform=App.platform_name)
                 ),
                 self._placeholder_content("Log"),
                 self._placeholder_content("Settings"),
-            ])
+            ]))
 
-    def _build_tabs(self, tab_contents: list[ft.Control]) -> None:
+    def _build_tabs(self, tab_contents: list[ft.Control]) -> ft.Tabs:
         tab_labels = [
             t("tabFlash"),
             t("tabSwo"),
@@ -249,7 +261,7 @@ class App:  # pylint: disable=too-few-public-methods
                 ],
             ),
         )
-        self.page.add(self.tabs)
+        return self.tabs
 
     @staticmethod
     def _placeholder_content(text: str) -> ft.Container:
