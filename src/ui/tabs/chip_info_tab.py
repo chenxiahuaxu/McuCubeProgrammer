@@ -159,7 +159,7 @@ class ChipInfoTab:
                 self._info_row(
                     region.name or "RAM",
                     f"{_fmt_addr(region.start)} \u2014 "
-                    f"{_fmt_addr(region.start + region.length)}"
+                    f"{_fmt_addr(region.start + region.length - 1)}"
                     f"  ({_fmt_size(region.length)})",
                 ),
             )
