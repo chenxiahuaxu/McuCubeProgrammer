@@ -257,10 +257,16 @@ class ConnectionPanel:
 
     def _on_drag(self, e: ft.DragUpdateEvent) -> None:
         """拖拽面板右边缘调整宽度。"""
-        delta = getattr(e, "delta_x", 0) or getattr(e, "deltax", 0)
+        # Flet 各版本属性名不同，兼容 delta_x / global_delta.x
+        if hasattr(e, "delta_x"):
+            delta = int(e.delta_x)
+        elif hasattr(e, "global_delta") and hasattr(e.global_delta, "x"):
+            delta = int(e.global_delta.x)
+        else:
+            return
         if not delta:
             return
-        new_w = max(PANEL_MIN, min(PANEL_MAX, self._panel_width + int(delta)))
+        new_w = max(PANEL_MIN, min(PANEL_MAX, self._panel_width + delta))
         if new_w == self._panel_width:
             return
         self._panel_width = new_w
