@@ -1,6 +1,4 @@
 flet>=0.28.0
-flet-web>=0.28.0
 pyocd>=0.44.0
-pyusb>=1.2.0
 pyperclip>=1.9.0
 pytest-asyncio>=0.21.0
