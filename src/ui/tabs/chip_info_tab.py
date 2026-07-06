@@ -31,11 +31,7 @@ def _fmt_size(size_bytes: int) -> str:
 
 
 class ChipInfoTab:
-    """芯片信息标签页。
-
-    连接成功后自动读取 TargetInfo，展示芯片型号、存储布局、
-    Flash 区域详情。未连接时提示用户先连接。
-    """
+    """芯片信息标签页。"""
 
     def __init__(self, backend):
         self._backend = backend
@@ -73,7 +69,7 @@ class ChipInfoTab:
 
     # ── 数据刷新 ─────────────────────────────────────────
     def _populate(self) -> None:
-        """纯数据填充——不清空再重建，仅操作 controls 列表。"""
+        """纯数据填充。"""
         self._content.controls.clear()
 
         if not self._backend or not self._backend.is_connected:
@@ -108,15 +104,14 @@ class ChipInfoTab:
 
         self._build_target_card(info)
         self._build_memory_card(info)
-        self._build_regions_card(info)
+        self._build_flash_regions_card(info)
+        self._build_ram_regions_card(info)
 
     def _refresh(self) -> None:
-        """按钮回调：重建数据后触发页面更新。"""
         self._populate()
         self._content.update()
 
     def refresh(self) -> None:
-        """公开方法：外部触发刷新（如标签页切换时）。"""
         self._refresh()
 
     # ── 目标信息卡片 ─────────────────────────────────────
@@ -131,12 +126,8 @@ class ChipInfoTab:
             card_container(
                 content=ft.Column(
                     controls=[
-                        ft.Text(
-                            t("chipSectionTarget"),
-                            size=Font.Size.HEADING,
-                            weight=600,
-                            color=Colors.ACCENT_COPPER,
-                        ),
+                        ft.Text(t("chipSectionTarget"), size=Font.Size.HEADING,
+                                weight=600, color=Colors.ACCENT_COPPER),
                         section_divider(),
                         *rows,
                     ],
@@ -171,8 +162,8 @@ class ChipInfoTab:
             ),
         )
 
-    # ── 存储器区域表格 ───────────────────────────────────
-    def _build_regions_card(self, info: TargetInfo) -> None:
+    # ── Flash 区域表格 ───────────────────────────────────
+    def _build_flash_regions_card(self, info: TargetInfo) -> None:
         header = ft.Row(
             controls=[
                 ft.Text(t("chipRegionName"), width=140, size=Font.Size.CAPTION,
@@ -190,7 +181,6 @@ class ChipInfoTab:
         )
 
         rows: list[ft.Control] = [header, standard_divider()]
-        # 子区域名 → 计数映射，用于父区域汇总
         child_counts: dict[str, int] = {}
         for r in info.flash_regions:
             if "_0x" in r.name:
@@ -198,7 +188,6 @@ class ChipInfoTab:
                 c = r.length // r.sector_size if r.sector_size else 1
                 child_counts[parent] = child_counts.get(parent, 0) + c
 
-        # Flash 区域
         for r in info.flash_regions:
             indent = "  " if ("_0x" in r.name) else ""
             if "_0x" in r.name or r.name not in child_counts:
@@ -224,22 +213,46 @@ class ChipInfoTab:
                 ),
             )
 
-        # RAM 区域
+        self._content.controls.append(
+            card_container(
+                content=ft.Column(
+                    controls=[
+                        ft.Text(t("chipSectionFlash"), size=Font.Size.HEADING,
+                                weight=600, color=Colors.ACCENT_COPPER),
+                        section_divider(),
+                        ft.Column(controls=rows, spacing=Spacing.XS),
+                    ],
+                    spacing=Spacing.SM,
+                ),
+            ),
+        )
+
+    # ── RAM 区域表格 ─────────────────────────────────────
+    def _build_ram_regions_card(self, info: TargetInfo) -> None:
+        header = ft.Row(
+            controls=[
+                ft.Text(t("chipRegionName"), width=200, size=Font.Size.CAPTION,
+                        weight=600, color=Colors.TEXT_SECONDARY),
+                ft.Text(t("chipRegionAddress"), width=250, size=Font.Size.CAPTION,
+                        weight=600, color=Colors.TEXT_SECONDARY),
+                ft.Text(t("chipRegionSize"), width=80, size=Font.Size.CAPTION,
+                        weight=600, color=Colors.TEXT_SECONDARY),
+            ],
+            spacing=Spacing.SM,
+        )
+
+        rows: list[ft.Control] = [header, standard_divider()]
         for r in info.ram_regions:
             rows.append(
                 ft.Row(
                     controls=[
-                        ft.Text(r.name, width=140, size=Font.Size.CAPTION,
+                        ft.Text(r.name, width=200, size=Font.Size.CAPTION,
                                 color=Colors.ACCENT_COPPER, font_family=Font.MONO),
                         ft.Text(f"{_fmt_addr(r.start)} \u2014 {_fmt_addr(r.start + r.length - 1)}",
-                                width=180, size=Font.Size.CAPTION,
+                                width=250, size=Font.Size.CAPTION,
                                 color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
-                        ft.Text(_fmt_size(r.length), width=70, size=Font.Size.CAPTION,
+                        ft.Text(_fmt_size(r.length), width=80, size=Font.Size.CAPTION,
                                 color=Colors.TEXT_PRIMARY),
-                        ft.Text("\u2014", width=70, size=Font.Size.CAPTION,
-                                color=Colors.TEXT_DIM),
-                        ft.Text("\u2014", width=40, size=Font.Size.CAPTION,
-                                color=Colors.TEXT_DIM),
                     ],
                     spacing=Spacing.SM,
                 ),
@@ -249,12 +262,8 @@ class ChipInfoTab:
             card_container(
                 content=ft.Column(
                     controls=[
-                        ft.Text(
-                            t("chipRegionsTitle"),
-                            size=Font.Size.HEADING,
-                            weight=600,
-                            color=Colors.ACCENT_COPPER,
-                        ),
+                        ft.Text(t("chipSectionRam"), size=Font.Size.HEADING,
+                                weight=600, color=Colors.ACCENT_COPPER),
                         section_divider(),
                         ft.Column(controls=rows, spacing=Spacing.XS),
                     ],
@@ -268,18 +277,10 @@ class ChipInfoTab:
     def _info_row(label: str, value: str) -> ft.Row:
         return ft.Row(
             controls=[
-                ft.Text(
-                    label,
-                    width=130,
-                    size=Font.Size.BODY,
-                    color=Colors.TEXT_SECONDARY,
-                ),
-                ft.Text(
-                    value,
-                    size=Font.Size.BODY,
-                    color=Colors.TEXT_PRIMARY,
-                    font_family=Font.MONO,
-                ),
+                ft.Text(label, width=130, size=Font.Size.BODY,
+                        color=Colors.TEXT_SECONDARY),
+                ft.Text(value, size=Font.Size.BODY, color=Colors.TEXT_PRIMARY,
+                        font_family=Font.MONO),
             ],
             spacing=Spacing.SM,
         )
