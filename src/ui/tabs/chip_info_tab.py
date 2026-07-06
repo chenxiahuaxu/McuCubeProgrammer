@@ -115,6 +115,10 @@ class ChipInfoTab:
         self._populate()
         self._content.update()
 
+    def refresh(self) -> None:
+        """公开方法：外部触发刷新（如标签页切换时）。"""
+        self._refresh()
+
     # ── 目标信息卡片 ─────────────────────────────────────
     def _build_target_card(self, info: TargetInfo) -> None:
         rows = [
