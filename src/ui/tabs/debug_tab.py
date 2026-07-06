@@ -237,8 +237,6 @@ class DebugTab:
             scroll_row,
         ], spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO, width=560, height=400)
 
-        self._refresh_waveform_data()
-
         self._trend_dlg = ft.AlertDialog(
             modal=True,
             open=True,
@@ -247,6 +245,8 @@ class DebugTab:
             actions=[ft.ElevatedButton(content=ft.Text("Close"), on_click=lambda _: self._close_trend())],
         )
         self._page.show_dialog(self._trend_dlg)
+        # 首次填充数据（必须在 dialog 添加到 page 之后）
+        self._refresh_waveform_data()
 
     def _refresh_waveform_data(self) -> None:
         """原位更新 Canvas 形状 + Info 文本（不替换 dialog content）。"""
