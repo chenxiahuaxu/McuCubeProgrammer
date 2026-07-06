@@ -1,0 +1,107 @@
+# Build standalone executables for Windows / macOS / Linux using PyInstaller.
+# Triggered when a GitHub Release is published.
+#
+# Requires the publish workflow (python-publish.yml) to have already succeeded,
+# because we install from the published wheel to get the exact release version.
+
+name: Build Executable
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.os }} / py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.10"]
+    defaults:
+      run:
+        # bash on all platforms so we can share scripts
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r requirements.txt
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller \
+            --name "McuCubeProgrammer" \
+            --onefile \
+            --windowed \
+            --add-data "src:src" \
+            --hidden-import "flet" \
+            --hidden-import "pyocd" \
+            --hidden-import "pyocd.probe" \
+            --hidden-import "pyocd.debug" \
+            --hidden-import "pyocd.trace" \
+            --collect-all "flet" \
+            --clean \
+            src/main.py
+
+      - name: Test executable exists
+        run: |
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            ls -lh dist/McuCubeProgrammer.exe
+          else
+            ls -lh dist/McuCubeProgrammer
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: McuCubeProgrammer-${{ matrix.os }}
+          path: |
+            dist/McuCubeProgrammer*
+          if-no-files-found: error
+
+  attach-to-release:
+    name: Attach artifacts to release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Rename and prepare release assets
+        run: |
+          mkdir release-assets
+
+          # Windows
+          if [ -f "McuCubeProgrammer-windows-latest/McuCubeProgrammer.exe" ]; then
+            cp McuCubeProgrammer-windows-latest/McuCubeProgrammer.exe release-assets/McuCubeProgrammer-windows-amd64.exe
+          fi
+
+          # macOS
+          if [ -f "McuCubeProgrammer-macos-latest/McuCubeProgrammer" ]; then
+            cp McuCubeProgrammer-macos-latest/McuCubeProgrammer release-assets/McuCubeProgrammer-macos-amd64
+          fi
+
+          # Linux
+          if [ -f "McuCubeProgrammer-ubuntu-latest/McuCubeProgrammer" ]; then
+            cp McuCubeProgrammer-ubuntu-latest/McuCubeProgrammer release-assets/McuCubeProgrammer-linux-amd64
+          fi
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

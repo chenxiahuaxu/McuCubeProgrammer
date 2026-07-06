@@ -1,0 +1,43 @@
+# Automatically label PRs based on conventional commit prefixes in the title.
+# Also adds a "needs-review" label to every new PR.
+#
+# Label mapping:
+#   feat:*       → enhancement
+#   fix:*        → bug
+#   docs:*       → documentation
+#   chore:*      → chore
+#   refactor:*   → refactor
+#   test:*       → testing
+#   perf:*       → performance
+#   ci:*         → ci
+#   build:*      → build
+
+name: PR Labeler
+
+on:
+  pull_request:
+    types: [opened, edited, reopened]
+    branches: [main]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply conventional-commit labels
+        uses: actions/labeler@v5
+        continue-on-error: true
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+          sync-labels: true
+
+      - name: Add needs-review label
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          labels: needs-review

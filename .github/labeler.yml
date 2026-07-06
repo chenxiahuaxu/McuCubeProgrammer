@@ -1,0 +1,22 @@
+# Labeler configuration for PR title-based labeling.
+# See: https://github.com/actions/labeler
+
+# Conventional commit → label mapping
+enhancement:
+  - head-branch: ['^feat']
+bug:
+  - head-branch: ['^fix']
+documentation:
+  - head-branch: ['^docs']
+chore:
+  - head-branch: ['^chore']
+refactor:
+  - head-branch: ['^refactor']
+testing:
+  - head-branch: ['^test']
+performance:
+  - head-branch: ['^perf']
+ci:
+  - head-branch: ['^ci']
+build:
+  - head-branch: ['^build']
