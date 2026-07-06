@@ -1,4 +1,4 @@
-"""持久连接面板 — 始终可见，不跟随标签切换。
+"""持久连接面板 — 左侧边栏，始终可见，不跟随标签切换。
 
 包含: 探针选择 / 接口类型 / 连接方式 / 复位方式 / 芯片选择
 """
@@ -16,12 +16,21 @@ from src.ui.theme import Colors, Font, Spacing, card_container
 from src.utils.config import load as cfg_load, save as cfg_save
 from src.utils.logger import add_log
 
+PANEL_WIDTH: int = 240
 
-def _build_dropdown(ref, width: int = 140) -> ft.Dropdown:
+
+def _section_label(text: str) -> ft.Text:
+    return ft.Text(text, size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY)
+
+
+def _build_dropdown(ref, width: int | None = None, expand: bool = False) -> ft.Dropdown:
+    kwargs = {"ref": ref, "dense": True}
+    if expand:
+        kwargs["expand"] = True
+    elif width:
+        kwargs["width"] = width
     return ft.Dropdown(
-        ref=ref,
-        width=width,
-        dense=True,
+        **kwargs,
         bgcolor=Colors.BG_ELEVATED,
         border=ft.Border(
             top=ft.BorderSide(1, Colors.BORDER),
@@ -63,10 +72,17 @@ class ConnectionPanel:
 
     def build(self) -> ft.Control:
         # ── 探针选择 ──
-        probe_dd = _build_dropdown(self._probe_dd_ref, 240)
+        probe_dd = _build_dropdown(self._probe_dd_ref, expand=True)
         probe_dd.hint_text = t("probeSelectHint")
         probe_dd.options = []
         probe_dd.on_select = self._on_probe_selected
+
+        refresh_btn = ft.IconButton(
+            icon=ft.Icons.REFRESH,
+            tooltip=t("probeRefresh"),
+            icon_size=16,
+            on_click=self._on_refresh_click,
+        )
 
         # ── 接口类型 ──
         interface_group = ft.RadioGroup(
@@ -74,24 +90,16 @@ class ConnectionPanel:
             value=self._interface,
             content=ft.Row(
                 controls=[
-                    ft.Radio(
-                        value="swd",
-                        label=t("connSwd"),
-                        fill_color=Colors.ACCENT_PRIMARY,
-                    ),
-                    ft.Radio(
-                        value="jtag",
-                        label=t("connJtag"),
-                        fill_color=Colors.ACCENT_PRIMARY,
-                    ),
+                    ft.Radio(value="swd", label=t("connSwd"), fill_color=Colors.ACCENT_PRIMARY),
+                    ft.Radio(value="jtag", label=t("connJtag"), fill_color=Colors.ACCENT_PRIMARY),
                 ],
-                spacing=Spacing.XS,
+                spacing=Spacing.MD,
             ),
             on_change=self._on_interface_change,
         )
 
         # ── 连接方式 ──
-        connect_dd = _build_dropdown(self._connect_mode_ref, 120)
+        connect_dd = _build_dropdown(self._connect_mode_ref, expand=True)
         connect_dd.value = self._connect_mode
         connect_dd.options = [
             ft.dropdown.Option("normal", t("connModeNormal")),
@@ -101,7 +109,7 @@ class ConnectionPanel:
         connect_dd.on_select = self._on_connect_mode_change
 
         # ── 复位方式 ──
-        reset_dd = _build_dropdown(self._reset_mode_ref, 120)
+        reset_dd = _build_dropdown(self._reset_mode_ref, expand=True)
         reset_dd.value = self._reset_mode
         reset_dd.options = [
             ft.dropdown.Option("hw", t("connResetHw")),
@@ -111,79 +119,56 @@ class ConnectionPanel:
         ]
         reset_dd.on_select = self._on_reset_mode_change
 
-        # ── 芯片选择 — 厂家 + 器件两级联动 ──
+        # ── 芯片选择 ──
         from src.ui.components.target_selector import _VENDORS, _match_vendor
 
-        vendor_dd = _build_dropdown(self._vendor_ref, 160)
+        vendor_dd = _build_dropdown(self._vendor_ref, expand=True)
         vendor_dd.hint_text = t("targetVendor")
         vendor_dd.options = [
-            ft.dropdown.Option(key=k, text=f"{label} ({k})")
-            for k, label, _ in _VENDORS
+            ft.dropdown.Option(key=k, text=f"{label} ({k})") for k, label, _ in _VENDORS
         ]
         vendor_dd.on_select = lambda e: self._populate_chips(
             e.control.value, _VENDORS, _match_vendor
         )
 
-        chip_dd = _build_dropdown(self._chip_ref, 220)
+        chip_dd = _build_dropdown(self._chip_ref, expand=True)
         chip_dd.hint_text = t("targetChip")
         chip_dd.editable = True
         chip_dd.enable_filter = True
         chip_dd.menu_height = 280
         chip_dd.on_select = self._on_chip_selected
 
-        # ── 工具按钮 — 刷新探针 + 安装 Pack ──
-        refresh_btn = ft.IconButton(
-            icon=ft.Icons.REFRESH,
-            tooltip=t("probeRefresh"),
-            icon_size=18,
-            on_click=self._on_refresh_click,
-        )
-
-        return card_container(
+        return ft.Container(
             content=ft.Column(
+                scroll=ft.ScrollMode.AUTO,
                 controls=[
-                    # Row 1: 探针 + 接口
+                    ft.Text(t("tabProbe"), size=Font.Size.HEADING, weight=500,
+                            color=Colors.TEXT_PRIMARY),
                     ft.Row(
-                        controls=[
-                            probe_dd,
-                            refresh_btn,
-                            ft.VerticalDivider(width=1, color=Colors.DIVIDER),
-                            ft.Text(
-                                t("connInterfaceLabel"),
-                                size=Font.Size.CAPTION,
-                                color=Colors.TEXT_SECONDARY,
-                            ),
-                            interface_group,
-                        ],
-                        spacing=Spacing.SM,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        controls=[probe_dd, refresh_btn],
+                        spacing=Spacing.XS,
                     ),
-                    # Row 2: 连接方式 + 复位方式 + 芯片选择
-                    ft.Row(
-                        controls=[
-                            ft.Text(
-                                t("connModeLabel"),
-                                size=Font.Size.CAPTION,
-                                color=Colors.TEXT_SECONDARY,
-                            ),
-                            connect_dd,
-                            ft.Text(
-                                t("connResetLabel"),
-                                size=Font.Size.CAPTION,
-                                color=Colors.TEXT_SECONDARY,
-                            ),
-                            reset_dd,
-                            ft.VerticalDivider(width=1, color=Colors.DIVIDER),
-                            vendor_dd,
-                            chip_dd,
-                        ],
-                        spacing=Spacing.SM,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                    ),
+                    _section_label(t("connInterfaceLabel")),
+                    interface_group,
+                    _section_label(t("connModeLabel")),
+                    connect_dd,
+                    _section_label(t("connResetLabel")),
+                    reset_dd,
+                    ft.Divider(height=1, color=Colors.DIVIDER),
+                    _section_label(t("targetVendor")),
+                    vendor_dd,
+                    _section_label(t("targetChip")),
+                    chip_dd,
                 ],
                 spacing=Spacing.SM,
+                expand=True,
             ),
-            padding=Spacing.MD,
+            width=PANEL_WIDTH,
+            bgcolor=Colors.BG_SURFACE,
+            border=ft.Border(
+                right=ft.BorderSide(1, Colors.BORDER),
+            ),
+            padding=ft.Padding(left=Spacing.MD, top=Spacing.MD, right=Spacing.SM, bottom=Spacing.MD),
         )
 
     # ── 探针 ──────────────────────────────────────────────
