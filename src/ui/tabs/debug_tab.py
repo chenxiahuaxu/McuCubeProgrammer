@@ -33,6 +33,7 @@ class DebugTab:
         self._add_size: ft.Dropdown | None = None
         self._add_name: ft.TextField | None = None
         self._elf_path: ft.Text | None = None
+        self._elf_full_path: str = ""
         self._elf_view_btn: ft.TextButton | None = None
         self._elf_symbols_data: list[dict] = []
         self._chart_canvas: ft.Column | None = None
@@ -65,6 +66,7 @@ class DebugTab:
                     ft.Row(controls=[
                         ft.ElevatedButton(content=ft.Text(t("debugElfLoad"), size=Font.Size.CAPTION), icon=ft.Icons.FOLDER_OPEN, on_click=lambda _: self._pick_elf()),
                         self._elf_path,
+                        ft.Container(expand=True),
                         self._elf_view_btn,
                     ], spacing=Spacing.SM),
                 ], spacing=Spacing.SM)),
@@ -235,7 +237,9 @@ class DebugTab:
         picker = ft.FilePicker()
         files = await picker.pick_files(dialog_title="Select ELF file", allowed_extensions=["elf", "axf"])
         if files and files[0].path:
-            self._elf_path.value = files[0].path; self._elf_path.update()
+            import os
+            self._elf_full_path = files[0].path
+            self._elf_path.value = os.path.basename(files[0].path); self._elf_path.update()
             self._load_elf(files[0].path)
 
     def _load_elf(self, path: str) -> None:
@@ -289,7 +293,7 @@ class DebugTab:
         if not self._backend or not self._backend.is_connected:
             return
         try:
-            elf = self._elf_path.value.strip()
+            elf = self._elf_full_path
             threads = self._backend.get_rtos_threads(elf)
             self._rtos_column.controls.clear()
             if not threads:
