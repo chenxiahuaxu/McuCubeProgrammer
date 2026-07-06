@@ -265,9 +265,16 @@ class DebugTab:
         dlg = ft.AlertDialog(
             title=ft.Text(f"ELF Symbols ({len(self._elf_symbols_data)})"),
             content=ft.Container(content=ft.Column(controls=rows, spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO), width=600, height=500),
-            actions=[ft.TextButton("Close", on_click=lambda _: self._page.close(dlg))],
+            actions=[ft.TextButton(content=ft.Text("Close"), on_click=lambda _: self._close_dialog(dlg))],
         )
-        self._page.open(dlg)
+        self._page.dialog = dlg
+        dlg.open = True
+        self._page.update()
+
+    def _close_dialog(self, dlg) -> None:
+        dlg.open = False
+        if self._page:
+            self._page.update()
 
     def _watch_symbol(self, addr: int, name: str, size: int) -> None:
         size = max(size, 1) if size < 16 else 4
