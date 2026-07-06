@@ -544,11 +544,26 @@ class PyOCDBackend(BackendABC):
             result: list[dict] = []
             states = {1: "Running", 2: "Ready", 3: "Blocked", 4: "Suspended", 5: "Deleted"}
             for thread in threads:
+                try:
+                    sp = thread.get_stack_pointer()
+                    sp_str = f"SP=0x{sp:08X}"
+                except Exception:
+                    sp_str = "—"
+                try:
+                    s = thread.state
+                    st = states.get(s, str(s))
+                except Exception:
+                    st = "—"
+                try:
+                    p = thread.priority
+                    pr = str(p)
+                except Exception:
+                    pr = "—"
                 result.append({
                     "name": thread.name,
-                    "priority": str(thread.priority),
-                    "state": states.get(thread.state, str(thread.state)),
-                    "stack_usage": f"SP=0x{thread.get_stack_pointer():08X}",
+                    "priority": pr,
+                    "state": st,
+                    "stack_usage": sp_str,
                     "is_current": thread.is_current,
                     "unique_id": thread.unique_id,
                 })
