@@ -258,7 +258,8 @@ class DebugTab:
         hist = watch.get("history", [])
         vals = [v for v in hist if isinstance(v, (int, float))]
 
-        W = 800; H = 260; PAD = 28; MAX_DOTS = 120
+        W = 800; H = 260; PAD = 28; MAX_DOTS = 60
+        STEP = 12  # px per data point — 固定间距
         COPPER = "#D99A5A"; GREEN = "#26A641"
         shapes: list[cv.Shape] = []
 
@@ -273,7 +274,8 @@ class DebugTab:
             recent = vals[-MAX_DOTS:]
             bottom_y = y_of(vmin, vmin, span)
             n = len(recent)
-            x_step = (W - 2 * PAD) / max(n - 1, 1)
+            # 画布宽度随点数增长，超出 560 时滚动自动生效
+            W = max(200, STEP * (n - 1) + 2 * PAD)
 
             # 1. 边框
             shapes.append(cv.Rect(PAD, PAD, W - 2 * PAD, H - 2 * PAD,
@@ -284,7 +286,7 @@ class DebugTab:
                 y = PAD + (H - 2 * PAD) * (1 - pct)
                 shapes.append(cv.Line(PAD, y, W - PAD, y, paint=grid_paint))
             # 3. 像素坐标
-            pts = [(PAD + i * x_step, y_of(v, vmin, span)) for i, v in enumerate(recent)]
+            pts = [(PAD + i * STEP, y_of(v, vmin, span)) for i, v in enumerate(recent)]
 
             if n >= 2:
                 # 4. 填充
@@ -310,6 +312,7 @@ class DebugTab:
                     paint=ft.Paint(color=GREEN, style=ft.PaintingStyle.FILL)))
 
         self._trend_canvas.shapes = shapes
+        self._trend_canvas.width = W
         self._trend_canvas.update()
         if self._trend_info:
             if not vals:
