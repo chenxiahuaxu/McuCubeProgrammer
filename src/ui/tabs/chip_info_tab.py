@@ -227,11 +227,13 @@ class ChipInfoTab:
         for r in info.flash_regions:
             sector_count = r.length // r.sector_size if r.sector_size else 1
             sector_label = f"{_fmt_size(r.sector_size)}  \u00d7{sector_count}"
+            # 子区域缩进显示
+            indent = "  " if ("_0x" in r.name) else ""
             rows.append(
                 ft.Row(
                     controls=[
                         ft.Text(
-                            r.name,
+                            indent + r.name,
                             width=140,
                             size=Font.Size.CAPTION,
                             color=Colors.TEXT_PRIMARY,
