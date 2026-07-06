@@ -87,7 +87,7 @@ class ConnectionPanel:
                 ],
                 spacing=Spacing.XS,
             ),
-            on_select=self._on_interface_change,
+            on_change=self._on_interface_change,
         )
 
         # ── 连接方式 ──
