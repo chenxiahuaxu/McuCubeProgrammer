@@ -482,7 +482,7 @@ class PyOCDBackend(BackendABC):
         if not elf_path or not os.path.isfile(elf_path):
             return []
 
-        # 用 ELF 二进制解析符号地址（不注入 target.elf，避免 ELF reader 拦截内存读取）
+        # 用 ELF 解析符号地址，但不注入 target.elf（避免 ELF reader 拦截硬件内存读取）
         try:
             from elftools.elf.elffile import ELFFile
             raw_elf = ELFFile(open(elf_path, "rb"))
@@ -491,6 +491,14 @@ class PyOCDBackend(BackendABC):
         except Exception as e:
             _log.warning("Failed to open ELF: %s", e)
             return []
+
+        # 关键：清除 target.elf 后再创建 provider（provider 构造时缓存 debug context）
+        if session.target.elf is not None:
+            try:
+                session.target.elf.close()
+            except Exception:
+                pass
+            session.target._elf = None
 
         # 适配器：symbol_decoder.get_symbol_for_name → get_symbol_value
         from pyocd.rtos.freertos import FreeRTOSThreadProvider as _FRT
