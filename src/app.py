@@ -304,10 +304,7 @@ class App:  # pylint: disable=too-few-public-methods
 
     def _on_tab_change(self, e: ft.ControlEvent) -> None:
         """标签页切换时自动刷新芯片信息面板。"""
-        idx = self.tabs.selected_index
-        if idx == 2 and hasattr(self, "chip_info_tab"):
-            from src.utils.logger import add_log
-            add_log("DEBUG", f"[TabChange] switching to chip tab (idx={idx}), triggering refresh")
+        if self.tabs.selected_index == 2 and hasattr(self, "chip_info_tab"):
             self.chip_info_tab.refresh()
 
     @staticmethod
