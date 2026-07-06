@@ -527,9 +527,22 @@ class PyOCDBackend(BackendABC):
 
             if provider is None:
                 return []
-            provider.read_from_target = True
-            provider.update_threads()
-            threads = provider.get_threads()
+
+            # 暂停目标以确保稳定读取
+            was_running = session.target.is_running()
+            if was_running:
+                session.target.halt()
+
+            try:
+                provider.read_from_target = True
+                provider.update_threads()
+                threads = provider.get_threads()
+            finally:
+                if was_running:
+                    try:
+                        session.target.resume()
+                    except Exception:
+                        pass
             result: list[dict] = []
             for thread in threads:
                 desc = getattr(thread, "description", "") or ""
