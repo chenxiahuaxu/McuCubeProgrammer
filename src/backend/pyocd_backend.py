@@ -222,6 +222,13 @@ class PyOCDBackend(BackendABC):
             self.disconnect()
             raise BackendError(ErrorCode.TARGET_NOT_FOUND, str(e)) from e
 
+        # under-reset 模式下 target 可能未完全初始化内存映射，
+        # halt 一次确保 target.init() 完整执行
+        try:
+            self._session.target.halt()
+        except Exception:
+            pass
+
         try:
             return _extract_target_info(self._session.target)
         except Exception as e:
