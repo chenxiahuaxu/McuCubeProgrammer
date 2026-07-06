@@ -17,9 +17,10 @@ from src.utils.logger import add_log
 class DebugTab:
     """调试标签页 — 暂停 / 继续 / 复位 + 变量监控。"""
 
-    def __init__(self, backend: BackendABC, loop: asyncio.AbstractEventLoop):
+    def __init__(self, backend: BackendABC, loop: asyncio.AbstractEventLoop, page: ft.Page):
         self._backend = backend
         self._loop = loop
+        self._page = page
         self._state_text: ft.Text | None = None
         self._halt_btn: ft.ElevatedButton | None = None
         self._resume_btn: ft.ElevatedButton | None = None
@@ -68,6 +69,7 @@ class DebugTab:
                     ft.Text(t("debugElfTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
                     ft.Row(controls=[
                         self._elf_path,
+                        ft.ElevatedButton(content=ft.Text("...", size=Font.Size.CAPTION), on_click=lambda _: self._pick_elf()),
                         ft.ElevatedButton(content=ft.Text(t("debugElfLoad"), size=Font.Size.CAPTION), icon=ft.Icons.FOLDER_OPEN, on_click=lambda _: self._load_elf()),
                     ], spacing=Spacing.SM),
                     self._elf_symbols,
@@ -176,6 +178,20 @@ class DebugTab:
             await asyncio.sleep(1)
 
     # ── ELF 符号加载 ─────────────────────────────────────
+    def _pick_elf(self) -> None:
+        picker = ft.FilePicker(on_result=lambda e: self._on_elf_picked(e))
+        self._page.overlay.append(picker)
+        self._page.update()
+        picker.pick_files(
+            dialog_title="Select ELF file",
+            allowed_extensions=["elf", "axf"],
+        )
+
+    def _on_elf_picked(self, e: ft.FilePickerResultEvent) -> None:
+        if e.files and e.files[0].path:
+            self._elf_path.value = e.files[0].path
+            self._elf_path.update()
+
     def _load_elf(self) -> None:
         path = self._elf_path.value.strip()
         if not path:
