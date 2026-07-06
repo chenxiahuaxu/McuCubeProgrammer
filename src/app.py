@@ -5,12 +5,14 @@
   - asyncio 事件循环引用
   - 逻辑层实例 (ProbeManager / TargetManager / FlashController)
   - 共享 LogView 实例
+  - i18n 多语言支持
 """
 
 import asyncio
 
 import flet as ft
 
+from src.i18n import get_l10n, t
 from src.ui.theme import APP_TITLE, APP_VERSION, create_dark_theme
 from src.utils.logger import add_log, Logger as _Logger
 
@@ -27,6 +29,10 @@ class App:  # pylint: disable=too-few-public-methods
     def __init__(self, page: ft.Page) -> None:
         self.page: ft.Page = page
         self.loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
+
+        # ── i18n 初始化：auto-detect 系统语言 ──
+        self._l10n = get_l10n()
+        self._l10n.on_locale_change(self._on_language_changed)
 
         self._detect_platform()
         add_log("INFO", f"平台: {App.platform_name}"
@@ -144,10 +150,30 @@ class App:  # pylint: disable=too-few-public-methods
         """线程安全的日志回调 — 将日志条目写入 UI LogView。"""
         self.log_view.add_log(entry.level, entry.message)
 
+    # ── 语言切换 ──────────────────────────────────────────
+
+    def _on_language_changed(self, _lang: str) -> None:
+        """语言变更回调 — 完全重建 tabs 以更新所有文本。"""
+        self._rebuild_tabs()
+
+    def _rebuild_tabs(self) -> None:
+        """清除并重建所有标签页，保留当前选中的标签索引。"""
+        selected = self.tabs.selected_index if hasattr(self, "tabs") else 0
+        self.page.controls.clear()
+        self._build_tabs()
+        self.tabs.selected_index = selected
+        self.page.update()
+
     # ── UI 构建 ───────────────────────────────────────────
 
     def _build_tabs(self) -> None:
-        tab_labels = ["Flash", "探针", "SWO", "日志", "设置"]
+        tab_labels = [
+            t("tabFlash"),
+            t("tabProbe"),
+            t("tabSwo"),
+            t("tabLog"),
+            t("tabSettings"),
+        ]
         tab_icons = [
             ft.Icons.FLASH_ON,
             ft.Icons.USB,
@@ -192,12 +218,12 @@ class App:  # pylint: disable=too-few-public-methods
             ]
         else:
             tab_texts = [
-                f"Flash — pyOCD 不可用 ({App.platform_name})",
-                "Probe — 探针信息区域",
+                t("placeholderPyocdNotAvailable", platform=App.platform_name),
+                f"Probe — 探针信息区域",
                 "Log — 日志输出区域",
                 "Settings — 配置与关于",
             ]
-            tab_contents = [self._placeholder_content(t) for t in tab_texts]
+            tab_contents = [self._placeholder_content(tx) for tx in tab_texts]
 
         self.tabs = ft.Tabs(
             selected_index=0,
@@ -256,11 +282,11 @@ class App:  # pylint: disable=too-few-public-methods
 
             dlg = ft.AlertDialog(
                 modal=True,
-                title=ft.Text("烧录进行中"),
-                content=ft.Text("当前正在进行烧录操作。强制关闭可能导致芯片处于不稳定状态。"),
+                title=ft.Text(t("dialogProgrammingTitle")),
+                content=ft.Text(t("dialogProgrammingMsg")),
                 actions=[
-                    ft.TextButton("等待完成", on_click=lambda ev: close_dlg()),
-                    ft.FilledButton("强制关闭", on_click=force_close),
+                    ft.TextButton(t("dialogWait"), on_click=lambda ev: close_dlg()),
+                    ft.FilledButton(t("dialogForceClose"), on_click=force_close),
                 ],
                 actions_alignment=ft.MainAxisAlignment.END,
             )
