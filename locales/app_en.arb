@@ -117,5 +117,9 @@
   "debugHalted": "Halted",
   "debugRunning": "Running",
   "debugNotConnected": "Not connected",
-  "debugUnknown": "Unknown"
+  "debugUnknown": "Unknown",
+  "debugWatchTitle": "Variable Watch",
+  "debugWatchName": "Name",
+  "debugWatchAdd": "Watch",
+  "debugWatchValue": "Value"
 }

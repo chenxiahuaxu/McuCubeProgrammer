@@ -118,5 +118,9 @@
   "debugHalted": "已暂停",
   "debugRunning": "运行中",
   "debugNotConnected": "未连接",
-  "debugUnknown": "未知"
+  "debugUnknown": "未知",
+  "debugWatchTitle": "变量监控",
+  "debugWatchName": "名称",
+  "debugWatchAdd": "监控",
+  "debugWatchValue": "当前值"
 }
