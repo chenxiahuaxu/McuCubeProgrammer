@@ -130,5 +130,6 @@
   "debugRtosTitle": "RTOS 任务",
   "debugRtosNone": "未检测到 RTOS",
   "debugRtosHint": "请确保编译时保留了 FreeRTOS 调试符号。",
-  "debugRefresh": "刷新"
+  "debugRefresh": "刷新",
+  "debugAuto": "自动"
 }

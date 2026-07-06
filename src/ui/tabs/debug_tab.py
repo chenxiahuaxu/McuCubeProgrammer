@@ -39,6 +39,7 @@ class DebugTab:
         self._chart_canvas: ft.Column | None = None
         self._sample_count: int = 0
         self._rtos_column: ft.Column | None = None
+        self._rtos_auto: bool = False
 
     def build(self) -> ft.Control:
         self._state_text = ft.Text(t("debugUnknown"), size=Font.Size.BODY, color=Colors.TEXT_SECONDARY)
@@ -91,6 +92,7 @@ class DebugTab:
                 card_container(content=ft.Column(controls=[
                     ft.Row(controls=[
                         ft.Text(t("debugRtosTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
+                        ft.Switch(value=False, label=t("debugAuto"), label_style=ft.TextStyle(size=Font.Size.CAPTION), on_change=self._on_rtos_auto),
                         ft.ElevatedButton(content=ft.Text(t("debugRefresh"), size=Font.Size.CAPTION), icon=ft.Icons.REFRESH, on_click=lambda _: self._refresh_rtos()),
                     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                     self._rtos_column,
@@ -324,3 +326,13 @@ class DebugTab:
         except Exception:
             import traceback
             add_log("ERROR", f"RTOS 读取失败:\n{traceback.format_exc()}")
+
+    def _on_rtos_auto(self, e: ft.ControlEvent) -> None:
+        self._rtos_auto = e.control.value
+        if self._rtos_auto:
+            self._loop.create_task(self._rtos_loop())
+
+    async def _rtos_loop(self) -> None:
+        while self._rtos_auto:
+            self._refresh_rtos()
+            await asyncio.sleep(2)
