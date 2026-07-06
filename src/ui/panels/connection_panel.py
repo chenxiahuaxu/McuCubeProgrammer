@@ -328,7 +328,13 @@ class ConnectionPanel:
         return self._conn_section
 
     def _on_connect(self, _e: ft.ControlEvent) -> None:
-        """连接目标芯片（无需预选芯片，pyOCD 可自动检测）。"""
+        """连接目标芯片。"""
+        target_name = self.target_mgr.get_selected_target()
+        if not target_name:
+            self.page.snack_bar = ft.SnackBar(content=ft.Text(t("connSelectTarget")), bgcolor=Colors.WARNING)
+            self.page.snack_bar.open = True
+            self.page.update()
+            return
         probe = self.probe_mgr.get_selected_probe()
         if not probe:
             self.page.snack_bar = ft.SnackBar(content=ft.Text(t("connSelectProbe")), bgcolor=Colors.WARNING)
@@ -342,7 +348,6 @@ class ConnectionPanel:
 
         cfg = cfg_load()
         frequency = cfg.get("swd_frequency", 200_000)
-        target_name = self.target_mgr.get_selected_target() or ""
 
         try:
             self._backend.connect(
@@ -351,11 +356,6 @@ class ConnectionPanel:
                 frequency=frequency,
             )
             self._connected = True
-
-            # 自动将检测到的芯片选入下拉框
-            if info.name and info.name != "unknown":
-                self.target_mgr.select_target(info.name)
-                self._auto_select_chip(info.name)
         except Exception as ex:
             self.page.snack_bar = ft.SnackBar(
                 content=ft.Text(f"{t('connFailed')}: {ex}"),
@@ -494,24 +494,3 @@ class ConnectionPanel:
                 self._chip_ref.current.value = saved_target
                 self._chip_ref.current.update()
                 self.target_mgr.select_target(saved_target)
-
-    def _auto_select_chip(self, target_name: str) -> None:
-        """连接成功后自动将检测到的芯片选入下拉框。"""
-        if not hasattr(self, "_all_targets"):
-            self._all_targets = self.target_mgr.list_all_targets()
-        target_names = [n for n, _ in self._all_targets]
-        if target_name in target_names:
-            from src.ui.components.target_selector import _VENDORS, _match_vendor
-            vendor_key = "OTHER"
-            for k, _, p in _VENDORS:
-                if p and _match_vendor(target_name, p):
-                    vendor_key = k
-                    break
-            if self._vendor_ref.current:
-                self._vendor_ref.current.value = vendor_key
-                self._vendor_ref.current.update()
-                self._populate_chips(vendor_key, _VENDORS, _match_vendor)
-            if self._chip_ref.current:
-                self._chip_ref.current.value = target_name
-                self._chip_ref.current.update()
-            self.target_mgr.select_target(target_name)
