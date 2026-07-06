@@ -10,6 +10,7 @@ import flet as ft
 from src.backend.interface import BackendABC
 from src.i18n import t
 from src.ui.theme import Colors, Font, Spacing, card_container, standard_divider
+from src.utils.elf_parser import parse_elf_symbols
 from src.utils.logger import add_log
 
 
@@ -30,6 +31,8 @@ class DebugTab:
         self._add_addr: ft.TextField | None = None
         self._add_size: ft.Dropdown | None = None
         self._add_name: ft.TextField | None = None
+        self._elf_path: ft.TextField | None = None
+        self._elf_symbols: ft.Column | None = None
 
     def build(self) -> ft.Control:
         self._state_text = ft.Text(t("debugUnknown"), size=Font.Size.BODY, color=Colors.TEXT_SECONDARY)
@@ -46,6 +49,8 @@ class DebugTab:
         self._add_name = ft.TextField(hint_text=t("debugWatchName"), width=100, text_size=12)
         add_btn = ft.ElevatedButton(content=ft.Text(t("debugWatchAdd"), size=Font.Size.CAPTION), icon=ft.Icons.ADD, on_click=lambda _: self._add_watch())
         self._watch_column = ft.Column(spacing=Spacing.XS)
+        self._elf_path = ft.TextField(hint_text="firmware.elf", expand=True, text_size=12)
+        self._elf_symbols = ft.Column(spacing=Spacing.XS)
 
         return ft.ListView(
             controls=[
@@ -58,6 +63,14 @@ class DebugTab:
                     ft.Text(t("debugWatchTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
                     ft.Row(controls=[self._add_name, self._add_addr, self._add_size, add_btn], spacing=Spacing.SM),
                     self._watch_column,
+                ], spacing=Spacing.SM)),
+                card_container(content=ft.Column(controls=[
+                    ft.Text(t("debugElfTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
+                    ft.Row(controls=[
+                        self._elf_path,
+                        ft.ElevatedButton(content=ft.Text(t("debugElfLoad"), size=Font.Size.CAPTION), icon=ft.Icons.FOLDER_OPEN, on_click=lambda _: self._load_elf()),
+                    ], spacing=Spacing.SM),
+                    self._elf_symbols,
                 ], spacing=Spacing.SM)),
             ],
             expand=True, spacing=Spacing.LG, padding=Spacing.XXL,
@@ -161,3 +174,34 @@ class DebugTab:
                     w["value"] = "err"
             self._rebuild_watch_list()
             await asyncio.sleep(1)
+
+    # ── ELF 符号加载 ─────────────────────────────────────
+    def _load_elf(self) -> None:
+        path = self._elf_path.value.strip()
+        if not path:
+            return
+        try:
+            symbols = parse_elf_symbols(path)
+            add_log("INFO", f"从 ELF 加载 {len(symbols)} 个全局变量符号")
+            self._elf_symbols.controls.clear()
+            for s in symbols:
+                size = s["size"]
+                self._elf_symbols.controls.append(
+                    ft.Row(controls=[
+                        ft.Text(s["name"], width=180, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
+                        ft.Text(f"0x{s['addr']:08X}", width=110, size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY, font_family=Font.MONO),
+                        ft.Text(str(size), width=60, size=Font.Size.CAPTION, color=Colors.TEXT_DIM),
+                        ft.IconButton(icon=ft.Icons.ADD, icon_size=14, icon_color=Colors.ACCENT_PRIMARY, on_click=lambda e, a=s["addr"], n=s["name"], sz=size: self._watch_symbol(a, n, sz)),
+                    ], spacing=Spacing.SM)
+                )
+            self._elf_symbols.update()
+        except Exception as e:
+            add_log("ERROR", f"ELF 解析失败: {e}")
+
+    def _watch_symbol(self, addr: int, name: str, size: int) -> None:
+        size = max(size, 1) if size < 16 else 4  # 默认 4 字节
+        self._watches.append({"name": name, "addr": addr, "size": size, "is_float": False})
+        self._rebuild_watch_list()
+        if not self._watch_running:
+            self._watch_running = True
+            self._loop.create_task(self._watch_loop())

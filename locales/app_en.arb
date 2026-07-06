@@ -121,5 +121,7 @@
   "debugWatchTitle": "Variable Watch",
   "debugWatchName": "Name",
   "debugWatchAdd": "Watch",
-  "debugWatchValue": "Value"
+  "debugWatchValue": "Value",
+  "debugElfTitle": "ELF Symbols",
+  "debugElfLoad": "Load"
 }

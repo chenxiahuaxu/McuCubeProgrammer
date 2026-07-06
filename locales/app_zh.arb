@@ -122,5 +122,7 @@
   "debugWatchTitle": "变量监控",
   "debugWatchName": "名称",
   "debugWatchAdd": "监控",
-  "debugWatchValue": "当前值"
+  "debugWatchValue": "当前值",
+  "debugElfTitle": "ELF 符号表",
+  "debugElfLoad": "加载"
 }
