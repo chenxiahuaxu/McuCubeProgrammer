@@ -156,6 +156,16 @@ class App:  # pylint: disable=too-few-public-methods
         """语言变更回调 — 完全重建 tabs 以更新所有文本。"""
         self._rebuild_tabs()
 
+    def _on_panel_resize(self, new_width: int) -> None:
+        """侧边栏拖拽调整宽度回调。"""
+        # 更新 overlay Container 宽度
+        if hasattr(self, "_sidebar_overlay"):
+            self._sidebar_overlay.width = new_width
+            self._sidebar_overlay.update()
+        # 更新 page 内容区左间距
+        self.page.padding = ft.Padding(left=new_width, top=0, right=0, bottom=0)
+        self.page.update()
+
     def _rebuild_tabs(self) -> None:
         """重建标签页内容（语言切换时调用），保留侧边栏状态。"""
         selected = self.tabs.selected_index if hasattr(self, "tabs") else 0
@@ -178,6 +188,7 @@ class App:  # pylint: disable=too-few-public-methods
                     page=self.page,
                     probe_manager=self.probe_manager,
                     target_manager=self.target_manager,
+                    on_resize=self._on_panel_resize,
                 )
             from src.ui.tabs.flash_tab import FlashTab
             from src.ui.tabs.log_tab import LogTab
@@ -202,7 +213,7 @@ class App:  # pylint: disable=too-few-public-methods
 
             from src.ui.panels.connection_panel import PANEL_WIDTH
 
-            # 侧边栏: overlay 在左侧 (浮层，不受 page.padding 影响)
+            # 侧边栏: overlay 在左侧，可拖拽调整宽度
             self.page.overlay.append(
                 ft.Container(
                     content=self.connection_panel.build(),
@@ -212,7 +223,9 @@ class App:  # pylint: disable=too-few-public-methods
                     width=PANEL_WIDTH,
                 )
             )
-            # 主体: page 内容区左边留出 240px
+            self._sidebar_overlay = self.page.overlay[-1]
+
+            # 主体: page 内容区左边留出面板宽度
             self.page.padding = ft.Padding(left=PANEL_WIDTH, top=0, right=0, bottom=0)
             self.page.add(
                 self._build_tabs([

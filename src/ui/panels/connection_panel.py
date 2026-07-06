@@ -1,4 +1,4 @@
-"""持久连接面板 — 左侧边栏，始终可见，不跟随标签切换。
+"""持久连接面板 — 左侧边栏，始终可见，可拖拽调整宽度。
 
 包含: 探针选择 / 接口类型 / 芯片选择
 """
@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 
 import flet as ft
 
@@ -16,7 +17,8 @@ from src.ui.theme import Colors, Font, Spacing
 from src.utils.config import load as cfg_load, save as cfg_save
 
 PANEL_WIDTH: int = 260
-DROPDOWN_WIDTH: int = PANEL_WIDTH - 30  # 230px
+PANEL_MIN: int = 200
+PANEL_MAX: int = 420
 
 
 def _section_label(text: str) -> ft.Text:
@@ -51,15 +53,20 @@ class ConnectionPanel:
         page: ft.Page,
         probe_manager: ProbeManager,
         target_manager: TargetManager,
+        on_resize: Callable[[int], None] | None = None,
     ) -> None:
         self.page = page
         self.probe_mgr = probe_manager
         self.target_mgr = target_manager
+        self._on_resize = on_resize
+        self._panel_width: int = PANEL_WIDTH
+        self._dd_width: int = PANEL_WIDTH - 30
 
         self._probe_dd_ref = ft.Ref[ft.Dropdown]()
         self._vendor_ref = ft.Ref[ft.Dropdown]()
         self._chip_ref = ft.Ref[ft.Dropdown]()
         self._interface_ref = ft.Ref[ft.RadioGroup]()
+        self._body_ref = ft.Ref[ft.Container]()
         self._scanning: bool = False
 
         cfg = cfg_load()
@@ -69,7 +76,7 @@ class ConnectionPanel:
 
     def build(self) -> ft.Control:
         # ── 探针选择 ──
-        probe_dd = _build_dropdown(self._probe_dd_ref, DROPDOWN_WIDTH)
+        probe_dd = _build_dropdown(self._probe_dd_ref, self._dd_width)
         probe_dd.hint_text = t("probeSelectHint")
         probe_dd.options = []
         probe_dd.on_select = self._on_probe_selected
@@ -100,7 +107,7 @@ class ConnectionPanel:
         # ── 芯片选择 ──
         from src.ui.components.target_selector import _VENDORS, _match_vendor
 
-        vendor_dd = _build_dropdown(self._vendor_ref, DROPDOWN_WIDTH)
+        vendor_dd = _build_dropdown(self._vendor_ref, self._dd_width)
         vendor_dd.hint_text = t("targetVendor")
         vendor_dd.options = [
             ft.dropdown.Option(key=k, text=f"{label} ({k})") for k, label, _ in _VENDORS
@@ -109,43 +116,62 @@ class ConnectionPanel:
             e.control.value, _VENDORS, _match_vendor
         )
 
-        chip_dd = _build_dropdown(self._chip_ref, DROPDOWN_WIDTH)
+        chip_dd = _build_dropdown(self._chip_ref, self._dd_width)
         chip_dd.hint_text = t("targetChip")
         chip_dd.editable = True
         chip_dd.enable_filter = True
         chip_dd.menu_height = 280
         chip_dd.on_select = self._on_chip_selected
 
-        return ft.Container(
-            content=ft.Column(
-                scroll=ft.ScrollMode.AUTO,
-                controls=[
-                    ft.Row(
+        return ft.Stack(
+            controls=[
+                ft.Container(
+                    ref=self._body_ref,
+                    content=ft.Column(
+                        scroll=ft.ScrollMode.AUTO,
                         controls=[
-                            ft.Text(t("tabProbe"), size=Font.Size.BODY, weight=500,
-                                    color=Colors.TEXT_PRIMARY),
-                            refresh_btn,
+                            ft.Row(
+                                controls=[
+                                    ft.Text(t("tabProbe"), size=Font.Size.BODY, weight=500,
+                                            color=Colors.TEXT_PRIMARY),
+                                    refresh_btn,
+                                ],
+                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            ),
+                            probe_dd,
+                            _section_label(t("connInterfaceLabel")),
+                            interface_group,
+                            ft.Divider(height=1, color=Colors.DIVIDER),
+                            _section_label(t("targetVendor")),
+                            vendor_dd,
+                            _section_label(t("targetChip")),
+                            chip_dd,
                         ],
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=Spacing.SM,
                     ),
-                    probe_dd,
-                    _section_label(t("connInterfaceLabel")),
-                    interface_group,
-                    ft.Divider(height=1, color=Colors.DIVIDER),
-                    _section_label(t("targetVendor")),
-                    vendor_dd,
-                    _section_label(t("targetChip")),
-                    chip_dd,
-                ],
-                spacing=Spacing.SM,
-            ),
-            width=PANEL_WIDTH,
-            bgcolor=Colors.BG_SURFACE,
-            border=ft.Border(
-                right=ft.BorderSide(1, Colors.BORDER),
-            ),
-            padding=ft.Padding(left=Spacing.MD, top=Spacing.MD, right=Spacing.SM, bottom=Spacing.MD),
+                    width=self._panel_width,
+                    bgcolor=Colors.BG_SURFACE,
+                    border=ft.Border(
+                        right=ft.BorderSide(1, Colors.BORDER),
+                    ),
+                    padding=ft.Padding(left=Spacing.MD, top=Spacing.MD, right=Spacing.MD, bottom=Spacing.MD),
+                ),
+                # 拖拽手柄（右侧 6px）
+                ft.GestureDetector(
+                    content=ft.Container(
+                        width=6,
+                        bgcolor=Colors.ACCENT_COPPER_MUTED,
+                        border_radius=3,
+                    ),
+                    on_horizontal_drag_update=self._on_drag,
+                    left=self._panel_width - 3,
+                    top=40,
+                    bottom=40,
+                ),
+            ],
+            width=self._panel_width,
+            expand=False,
         )
 
     # ── 探针 ──────────────────────────────────────────────
@@ -229,6 +255,42 @@ class ConnectionPanel:
     def _on_interface_change(self, e: ft.ControlEvent) -> None:
         self._interface = e.control.value
         self._save_config()
+
+    # ── 拖拽调整宽度 ─────────────────────────────────────
+
+    def _on_drag(self, e: ft.DragUpdateEvent) -> None:
+        """拖拽面板右边缘调整宽度。"""
+        new_w = max(PANEL_MIN, min(PANEL_MAX, self._panel_width + int(e.delta_x)))
+        if new_w == self._panel_width:
+            return
+        self._panel_width = new_w
+        self._dd_width = new_w - 30
+
+        # 更新 body Container 宽度
+        body = self._body_ref.current
+        if body:
+            body.width = new_w
+            body.update()
+
+        # 更新拖拽手柄位置
+        handle = e.control
+        handle.left = new_w - 3
+        handle.update()
+
+        # 更新下拉框宽度
+        for dd_ref in (self._probe_dd_ref, self._vendor_ref, self._chip_ref):
+            dd = dd_ref.current
+            if dd:
+                dd.width = self._dd_width
+                dd.update()
+
+        # 通知 app.py 更新 page.padding
+        if self._on_resize:
+            self._on_resize(new_w)
+
+    @property
+    def panel_width(self) -> int:
+        return self._panel_width
 
     # ── 配置持久化 ───────────────────────────────────────
 
