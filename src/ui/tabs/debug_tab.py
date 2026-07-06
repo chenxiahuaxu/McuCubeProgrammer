@@ -254,26 +254,28 @@ class DebugTab:
             add_log("ERROR", f"ELF 解析失败: {e}")
 
     def _show_symbols(self) -> None:
-        """弹出对话框展示符号表。"""
-        if not self._page or not self._elf_symbols_data:
-            return
-        rows: list[ft.Control] = []
-        for s in self._elf_symbols_data[:200]:  # 最多 200 个
-            rows.append(ft.Row(controls=[
-                ft.Text(s["name"], width=180, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
-                ft.Text(f"0x{s['addr']:08X}", width=110, size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY, font_family=Font.MONO),
-                ft.Text(str(s["size"]), width=60, size=Font.Size.CAPTION, color=Colors.TEXT_DIM),
-                ft.IconButton(icon=ft.Icons.ADD, icon_size=14, icon_color=Colors.ACCENT_PRIMARY,
-                              on_click=lambda e, a=s["addr"], n=s["name"], sz=s["size"]: self._watch_symbol(a, n, sz)),
-            ], spacing=Spacing.SM))
-        dlg = ft.AlertDialog(
-            title=ft.Text(f"ELF Symbols ({len(self._elf_symbols_data)})"),
-            content=ft.Container(content=ft.Column(controls=rows, spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO), width=600, height=500),
-            actions=[ft.TextButton(content=ft.Text("Close"), on_click=lambda _: self._close_dialog(dlg))],
-        )
-        self._page.dialog = dlg
-        dlg.open = True
-        self._page.update()
+        try:
+            if not self._page or not self._elf_symbols_data:
+                return
+            rows: list[ft.Control] = []
+            for s in self._elf_symbols_data[:200]:
+                rows.append(ft.Row(controls=[
+                    ft.Text(s["name"], width=180, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
+                    ft.Text(f"0x{s['addr']:08X}", width=110, size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY, font_family=Font.MONO),
+                    ft.Text(str(s["size"]), width=60, size=Font.Size.CAPTION, color=Colors.TEXT_DIM),
+                    ft.IconButton(icon=ft.Icons.ADD, icon_size=14, icon_color=Colors.ACCENT_PRIMARY,
+                                  on_click=lambda e, a=s["addr"], n=s["name"], sz=s["size"]: self._watch_symbol(a, n, sz)),
+                ], spacing=Spacing.SM))
+            dlg = ft.AlertDialog(
+                modal=True,
+                title=ft.Text(f"ELF Symbols ({len(self._elf_symbols_data)})"),
+                content=ft.Container(content=ft.Column(controls=rows, spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO), width=600, height=500),
+                actions=[ft.TextButton(content=ft.Text("Close"), on_click=lambda _: self._close_dialog(dlg))],
+            )
+            self._page.dialog = dlg
+            self._page.update()
+        except Exception as e:
+            add_log("ERROR", f"弹窗失败: {e}")
 
     def _close_dialog(self, dlg) -> None:
         dlg.open = False
