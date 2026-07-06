@@ -403,6 +403,35 @@ class PyOCDBackend(BackendABC):
                 f"复位失败: {e}",
             ) from e
 
+    def halt(self) -> None:
+        session = self._require_session()
+        try:
+            session.target.halt()
+        except pyocd_exc.Error as e:
+            raise BackendError(
+                ErrorCode.TARGET_CONNECT_FAILED,
+                f"暂停失败: {e}",
+            ) from e
+
+    def resume(self) -> None:
+        session = self._require_session()
+        try:
+            session.target.resume()
+        except pyocd_exc.Error as e:
+            raise BackendError(
+                ErrorCode.TARGET_CONNECT_FAILED,
+                f"恢复运行失败: {e}",
+            ) from e
+
+    @property
+    def is_halted(self) -> bool:
+        if self._session is None:
+            return False
+        try:
+            return self._session.target.is_halted()
+        except Exception:
+            return False
+
     # ── SWO ─────────────────────────────────────────────
 
     def swo_start(self, baudrate: float = 1_000_000) -> None:

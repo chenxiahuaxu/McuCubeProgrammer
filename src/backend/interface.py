@@ -300,6 +300,30 @@ class BackendABC(ABC):
         """
         ...
 
+    @abstractmethod
+    def halt(self) -> None:
+        """暂停目标芯片执行。
+
+        Raises:
+            BackendError(NOT_CONNECTED):  未连接目标。
+        """
+        ...
+
+    @abstractmethod
+    def resume(self) -> None:
+        """恢复目标芯片执行。
+
+        Raises:
+            BackendError(NOT_CONNECTED):  未连接目标。
+        """
+        ...
+
+    @property
+    @abstractmethod
+    def is_halted(self) -> bool:
+        """返回目标是否处于暂停状态。"""
+        ...
+
     @property
     @abstractmethod
     def is_connected(self) -> bool:
