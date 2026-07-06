@@ -2,6 +2,7 @@
   "@@locale": "zh",
   "@@last_modified": "2026-07-06",
   "tabFlash": "Flash",
+  "tabDebug": "调试",
   "tabProbe": "探针",
   "tabSwo": "SWO",
   "tabLog": "日志",
@@ -107,5 +108,13 @@
   "dialogProgrammingMsg": "当前正在进行烧录操作。强制关闭可能导致芯片处于不稳定状态。",
   "dialogWait": "等待完成",
   "dialogForceClose": "强制关闭",
-  "placeholderPyocdNotAvailable": "Flash — pyOCD 不可用 ({platform})"
+  "placeholderPyocdNotAvailable": "Flash — pyOCD 不可用 ({platform})",
+  "debugTitle": "目标控制",
+  "debugHalt": "暂停",
+  "debugResume": "继续",
+  "debugReset": "复位",
+  "debugHalted": "已暂停",
+  "debugRunning": "运行中",
+  "debugNotConnected": "未连接",
+  "debugUnknown": "未知"
 }

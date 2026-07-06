@@ -1,6 +1,7 @@
 {
   "@@locale": "en",
   "tabFlash": "Flash",
+  "tabDebug": "Debug",
   "tabProbe": "Probe",
   "tabSwo": "SWO",
   "tabLog": "Log",
@@ -106,5 +107,13 @@
   "dialogProgrammingMsg": "A programming operation is in progress. Force closing may leave the chip in an unstable state.",
   "dialogWait": "Wait for Completion",
   "dialogForceClose": "Force Close",
-  "placeholderPyocdNotAvailable": "Flash — pyOCD not available ({platform})"
+  "placeholderPyocdNotAvailable": "Flash — pyOCD not available ({platform})",
+  "debugTitle": "Target Control",
+  "debugHalt": "Halt",
+  "debugResume": "Resume",
+  "debugReset": "Reset",
+  "debugHalted": "Halted",
+  "debugRunning": "Running",
+  "debugNotConnected": "Not connected",
+  "debugUnknown": "Unknown"
 }
