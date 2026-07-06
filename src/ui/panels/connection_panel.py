@@ -15,8 +15,8 @@ from src.logic.target_manager import TargetManager
 from src.ui.theme import Colors, Font, Spacing
 from src.utils.config import load as cfg_load, save as cfg_save
 
-PANEL_WIDTH: int = 240
-DROPDOWN_WIDTH: int = PANEL_WIDTH - 30  # 210px usable
+PANEL_WIDTH: int = 260
+DROPDOWN_WIDTH: int = PANEL_WIDTH - 30  # 230px
 
 
 def _section_label(text: str) -> ft.Text:
@@ -31,7 +31,7 @@ def _build_dropdown(ref, width: int | None = None, expand: bool = False) -> ft.D
         kwargs["width"] = width
     return ft.Dropdown(
         **kwargs,
-        text_size=12,
+        text_size=11,
         bgcolor=Colors.BG_ELEVATED,
         border=ft.Border(
             top=ft.BorderSide(1, Colors.BORDER),
@@ -69,7 +69,7 @@ class ConnectionPanel:
 
     def build(self) -> ft.Control:
         # ── 探针选择 ──
-        probe_dd = _build_dropdown(self._probe_dd_ref, DROPDOWN_WIDTH - 30)
+        probe_dd = _build_dropdown(self._probe_dd_ref, DROPDOWN_WIDTH)
         probe_dd.hint_text = t("probeSelectHint")
         probe_dd.options = []
         probe_dd.on_select = self._on_probe_selected
@@ -77,7 +77,7 @@ class ConnectionPanel:
         refresh_btn = ft.IconButton(
             icon=ft.Icons.REFRESH,
             tooltip=t("probeRefresh"),
-            icon_size=16,
+            icon_size=14,
             on_click=self._on_refresh_click,
         )
 
@@ -120,12 +120,16 @@ class ConnectionPanel:
             content=ft.Column(
                 scroll=ft.ScrollMode.AUTO,
                 controls=[
-                    ft.Text(t("tabProbe"), size=Font.Size.BODY, weight=500,
-                            color=Colors.TEXT_PRIMARY),
                     ft.Row(
-                        controls=[probe_dd, refresh_btn],
-                        spacing=Spacing.XS,
+                        controls=[
+                            ft.Text(t("tabProbe"), size=Font.Size.BODY, weight=500,
+                                    color=Colors.TEXT_PRIMARY),
+                            refresh_btn,
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     ),
+                    probe_dd,
                     _section_label(t("connInterfaceLabel")),
                     interface_group,
                     ft.Divider(height=1, color=Colors.DIVIDER),
