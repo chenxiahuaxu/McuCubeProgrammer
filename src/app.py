@@ -96,7 +96,6 @@ class App:  # pylint: disable=too-few-public-methods
 
     def _configure_page(self) -> None:
         self.page.adaptive = True
-        self.page.scroll = ft.ScrollMode.AUTO
 
     # ── 主题配置 ──────────────────────────────────────────
 
@@ -225,24 +224,32 @@ class App:  # pylint: disable=too-few-public-methods
             )
             self._sidebar_overlay = self.page.overlay[-1]
 
-            # 主体: page 内容区左边留出面板宽度
+            # 主体: tab 内容区铺满
             self.page.padding = ft.Padding(left=PANEL_WIDTH, top=0, right=0, bottom=0)
             self.page.add(
-                self._build_tabs([
-                    self.flash_tab.build(),
-                    self.swo_tab.build(),
-                    log_tab.build(),
-                    settings_tab.build(),
-                ])
+                ft.Container(
+                    content=self._build_tabs([
+                        self.flash_tab.build(),
+                        self.swo_tab.build(),
+                        log_tab.build(),
+                        settings_tab.build(),
+                    ]),
+                    expand=True,
+                )
             )
         else:
-            self.page.add(self._build_tabs([
-                self._placeholder_content(
-                    t("placeholderPyocdNotAvailable", platform=App.platform_name)
-                ),
-                self._placeholder_content("Log"),
-                self._placeholder_content("Settings"),
-            ]))
+            self.page.add(
+                ft.Container(
+                    content=self._build_tabs([
+                        self._placeholder_content(
+                            t("placeholderPyocdNotAvailable", platform=App.platform_name)
+                        ),
+                        self._placeholder_content("Log"),
+                        self._placeholder_content("Settings"),
+                    ]),
+                    expand=True,
+                )
+            )
 
     def _build_tabs(self, tab_contents: list[ft.Control]) -> ft.Tabs:
         tab_labels = [
