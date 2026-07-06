@@ -152,32 +152,17 @@ class ChipInfoTab:
                 t("chipTotalFlash"),
                 f"{_fmt_size(info.total_flash_size)}  ({info.total_flash_size:,} B)",
             ),
-        ]
-        # 每个 RAM 区域单独一行
-        for region in info.ram_regions:
-            rows.append(
-                self._info_row(
-                    region.name or "RAM",
-                    f"{_fmt_addr(region.start)} \u2014 "
-                    f"{_fmt_addr(region.start + region.length - 1)}"
-                    f"  ({_fmt_size(region.length)})",
-                ),
-            )
-        if len(info.ram_regions) > 1:
-            rows.append(self._info_row(
+            self._info_row(
                 t("chipTotalRam"),
-                _fmt_size(info.total_ram_size),
-            ))
+                f"{_fmt_size(info.total_ram_size)}  ({info.total_ram_size:,} B)",
+            ),
+        ]
         self._content.controls.append(
             card_container(
                 content=ft.Column(
                     controls=[
-                        ft.Text(
-                            t("chipSectionMemory"),
-                            size=Font.Size.HEADING,
-                            weight=600,
-                            color=Colors.ACCENT_COPPER,
-                        ),
+                        ft.Text(t("chipSectionMemory"), size=Font.Size.HEADING,
+                                weight=600, color=Colors.ACCENT_COPPER),
                         section_divider(),
                         *rows,
                     ],
@@ -188,7 +173,6 @@ class ChipInfoTab:
 
     # ── 存储器区域表格 ───────────────────────────────────
     def _build_regions_card(self, info: TargetInfo) -> None:
-        # 表头
         header = ft.Row(
             controls=[
                 ft.Text(t("chipRegionName"), width=140, size=Font.Size.CAPTION,
@@ -214,13 +198,12 @@ class ChipInfoTab:
                 c = r.length // r.sector_size if r.sector_size else 1
                 child_counts[parent] = child_counts.get(parent, 0) + c
 
+        # Flash 区域
         for r in info.flash_regions:
             indent = "  " if ("_0x" in r.name) else ""
             if "_0x" in r.name or r.name not in child_counts:
-                # 子区域或无子区域：自己算
                 sector_count = r.length // r.sector_size if r.sector_size else 1
             else:
-                # 父区域：汇总子区域计数
                 sector_count = child_counts[r.name]
             rows.append(
                 ft.Row(
@@ -236,6 +219,27 @@ class ChipInfoTab:
                                 color=Colors.TEXT_PRIMARY),
                         ft.Text(str(sector_count), width=40, size=Font.Size.CAPTION,
                                 color=Colors.ACCENT_COPPER),
+                    ],
+                    spacing=Spacing.SM,
+                ),
+            )
+
+        # RAM 区域
+        for r in info.ram_regions:
+            rows.append(
+                ft.Row(
+                    controls=[
+                        ft.Text(r.name, width=140, size=Font.Size.CAPTION,
+                                color=Colors.ACCENT_COPPER, font_family=Font.MONO),
+                        ft.Text(f"{_fmt_addr(r.start)} \u2014 {_fmt_addr(r.start + r.length - 1)}",
+                                width=180, size=Font.Size.CAPTION,
+                                color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
+                        ft.Text(_fmt_size(r.length), width=70, size=Font.Size.CAPTION,
+                                color=Colors.TEXT_PRIMARY),
+                        ft.Text("\u2014", width=70, size=Font.Size.CAPTION,
+                                color=Colors.TEXT_DIM),
+                        ft.Text("\u2014", width=40, size=Font.Size.CAPTION,
+                                color=Colors.TEXT_DIM),
                     ],
                     spacing=Spacing.SM,
                 ),
