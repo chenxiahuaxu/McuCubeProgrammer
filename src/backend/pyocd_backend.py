@@ -72,18 +72,13 @@ def _probe_to_probe_info(probe: debug_probe.DebugProbe) -> ProbeInfo:
     )
 
 
-def _extract_target_info(target: Target) -> TargetInfo:
-    """从 pyOCD Target 对象中提取芯片的存储布局信息。"""
-    memory_map: MemoryMap = target.memory_map
-    all_regions = list(memory_map.regions)
-
-    # 部分 pyOCD 版本的 region.type 是枚举而非字符串，
-    # 因此统一转为字符串做包含匹配，兼容两种形态
-    flash_regions: list[FlashRegion] = []
-    for r in all_regions:
+def _collect_regions(memory_map: MemoryMap) -> list[FlashRegion]:
+    """递归收集所有 Flash 区域（含子区域，如 STM32F4 的 Flash_0x4000 等）。"""
+    result: list[FlashRegion] = []
+    for r in memory_map.regions:
         rt = str(r.type).lower()
         if "flash" in rt or "rom" in rt:
-            flash_regions.append(
+            result.append(
                 FlashRegion(
                     name=r.name,
                     start=r.start,
@@ -92,9 +87,20 @@ def _extract_target_info(target: Target) -> TargetInfo:
                     access=getattr(r, "access", "rwx"),
                 )
             )
+            if hasattr(r, "has_subregions") and r.has_subregions:
+                result.extend(_collect_regions(r.submap))
+    return result
 
+
+def _extract_target_info(target: Target) -> TargetInfo:
+    """从 pyOCD Target 对象中提取芯片的存储布局信息。"""
+    memory_map: MemoryMap = target.memory_map
+
+    flash_regions = _collect_regions(memory_map)
+
+    # RAM 区域
     ram_regions: list[FlashRegion] = []
-    for r in all_regions:
+    for r in memory_map.regions:
         rt = str(r.type).lower()
         if "ram" in rt:
             ram_regions.append(
@@ -102,7 +108,7 @@ def _extract_target_info(target: Target) -> TargetInfo:
                     name=r.name,
                     start=r.start,
                     length=r.length,
-                    sector_size=0,  # RAM 没有扇区概念
+                    sector_size=0,
                     access=getattr(r, "access", "rw"),
                 )
             )
