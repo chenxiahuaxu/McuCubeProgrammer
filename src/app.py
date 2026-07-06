@@ -192,6 +192,7 @@ class App:  # pylint: disable=too-few-public-methods
             )
             from src.ui.tabs.about_tab import AboutTab
             from src.ui.tabs.chip_info_tab import ChipInfoTab
+            from src.ui.tabs.debug_tab import DebugTab
             from src.ui.tabs.flash_tab import FlashTab
             from src.ui.tabs.log_tab import LogTab
             from src.ui.tabs.settings_tab import SettingsTab
@@ -212,6 +213,7 @@ class App:  # pylint: disable=too-few-public-methods
             )
             chip_info_tab = ChipInfoTab(backend=self.flash_controller._backend)
             self.chip_info_tab = chip_info_tab
+            debug_tab = DebugTab(backend=self.flash_controller._backend)
             log_tab = LogTab(log_view=self.log_view, page=self.page)
             settings_tab = SettingsTab(page=self.page)
             about_tab = AboutTab()
@@ -236,6 +238,7 @@ class App:  # pylint: disable=too-few-public-methods
                 ft.Container(
                     content=self._build_tabs([
                         self.flash_tab.build(),
+                        debug_tab.build(),
                         self.swo_tab.build(),
                         chip_info_tab.build(),
                         log_tab.build(),
@@ -262,6 +265,7 @@ class App:  # pylint: disable=too-few-public-methods
     def _build_tabs(self, tab_contents: list[ft.Control]) -> ft.Tabs:
         tab_labels = [
             t("tabFlash"),
+            t("tabDebug"),
             t("tabSwo"),
             t("tabChip"),
             t("tabLog"),
@@ -270,6 +274,7 @@ class App:  # pylint: disable=too-few-public-methods
         ]
         tab_icons = [
             ft.Icons.FLASH_ON,
+            ft.Icons.BUG_REPORT,
             ft.Icons.TERMINAL,
             ft.Icons.MEMORY,
             ft.Icons.LIST_ALT,
@@ -304,7 +309,7 @@ class App:  # pylint: disable=too-few-public-methods
 
     def _on_tab_change(self, e: ft.ControlEvent) -> None:
         """标签页切换时自动刷新芯片信息面板。"""
-        if self.tabs.selected_index == 2 and hasattr(self, "chip_info_tab"):
+        if self.tabs.selected_index == 3 and hasattr(self, "chip_info_tab"):
             self.chip_info_tab.refresh()
 
     @staticmethod
