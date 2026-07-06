@@ -43,7 +43,7 @@ class ChipInfoTab:
 
     def build(self) -> ft.Control:
         self._content = ft.Column(spacing=Spacing.SM)
-        self._refresh()
+        self._populate()
 
         return ft.ListView(
             controls=[
@@ -72,8 +72,8 @@ class ChipInfoTab:
         )
 
     # ── 数据刷新 ─────────────────────────────────────────
-    def _refresh(self) -> None:
-        """读取芯片信息并重建卡片。"""
+    def _populate(self) -> None:
+        """纯数据填充——不清空再重建，仅操作 controls 列表。"""
         self._content.controls.clear()
 
         if not self._backend or not self._backend.is_connected:
@@ -90,7 +90,6 @@ class ChipInfoTab:
                     ),
                 ),
             )
-            self._content.update()
             return
 
         try:
@@ -105,12 +104,15 @@ class ChipInfoTab:
                     ),
                 ),
             )
-            self._content.update()
             return
 
         self._build_target_card(info)
         self._build_memory_card(info)
         self._build_regions_card(info)
+
+    def _refresh(self) -> None:
+        """按钮回调：重建数据后触发页面更新。"""
+        self._populate()
         self._content.update()
 
     # ── 目标信息卡片 ─────────────────────────────────────
