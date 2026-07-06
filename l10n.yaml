@@ -1,0 +1,7 @@
+arb-dir: locales
+default-locale: zh
+fallback-locale: zh
+template-arb-file: app_zh.arb
+supported-locales:
+  - zh
+  - en
