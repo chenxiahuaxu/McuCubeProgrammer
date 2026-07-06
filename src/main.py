@@ -26,6 +26,7 @@ from src.app import App  # noqa: E402
 from src.utils.logger import add_log  # noqa: E402
 
 # ── 抑制 pyOCD 噪音：Board ID / CoreSight ──
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s [%(name)s] %(message)s")
 logging.getLogger("pyocd").setLevel(logging.ERROR)
 
 # SVD 文件 BOM 兼容修复
