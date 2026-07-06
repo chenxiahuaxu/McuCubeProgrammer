@@ -33,6 +33,7 @@ class DebugTab:
         self._trend_name: str = ""
         self._trend_canvas: cv.Canvas | None = None
         self._trend_info: ft.Text | None = None
+        self._trend_scroll_row: ft.Row | None = None
         self._add_addr: ft.TextField | None = None
         self._add_size: ft.Dropdown | None = None
         self._add_name: ft.TextField | None = None
@@ -166,7 +167,7 @@ class DebugTab:
                 ft.Text(f"0x{w['addr']:08X}", width=110, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
                 ft.Text(w.get("value", "—"), size=Font.Size.CAPTION, color=Colors.ACCENT_PRIMARY, font_family=Font.MONO),
                 ft.IconButton(icon=ft.Icons.BAR_CHART, icon_size=14, icon_color=Colors.ACCENT_COPPER,
-                              on_click=lambda e, n=name: self._show_trend(n)),
+                              on_click=lambda e, n=name: self._loop.create_task(self._show_trend(n))),
             ], spacing=Spacing.SM))
         self._watch_column.update()
 
@@ -213,28 +214,27 @@ class DebugTab:
             self._rebuild_watch_list()
             # 自动刷新趋势弹窗（暂停时不绘制）
             if self._trend_name and self._trend_canvas and not self._backend.is_halted:
-                self._refresh_waveform_data()
+                await self._refresh_waveform_data()
             await asyncio.sleep(0.5)
 
-    def _show_trend(self, name: str) -> None:
+    async def _show_trend(self, name: str) -> None:
         """弹出波形图对话框，Canvas 和 Info 只创建一次，之后原位刷新。"""
         self._trend_name = name
-        W = 800; H = 260
 
         self._trend_info = ft.Text(
             f"{name}:  —", size=Font.Size.CAPTION,
             color=Colors.TEXT_DIM, font_family=Font.MONO)
-        self._trend_canvas = cv.Canvas(shapes=[], width=W, height=H)
+        self._trend_canvas = cv.Canvas(shapes=[], width=200, height=260)
 
-        scroll_row = ft.Row(
+        self._trend_scroll_row = ft.Row(
             [self._trend_canvas],
             scroll=ft.ScrollMode.ADAPTIVE,
-            height=H + 12,
+            height=272,
         )
         content = ft.Column([
             self._trend_info,
             ft.Divider(height=6),
-            scroll_row,
+            self._trend_scroll_row,
         ], spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO, width=560, height=400)
 
         self._trend_dlg = ft.AlertDialog(
@@ -246,20 +246,18 @@ class DebugTab:
         )
         self._page.show_dialog(self._trend_dlg)
         # 首次填充数据（必须在 dialog 添加到 page 之后）
-        self._refresh_waveform_data()
+        await self._refresh_waveform_data()
 
-    def _refresh_waveform_data(self) -> None:
-        """原位更新 Canvas 形状 + Info 文本（不替换 dialog content）。"""
+    async def _refresh_waveform_data(self) -> None:
+        """原位更新全部历史数据，画布宽度自动适配，滚动到最新。"""
         if not self._trend_name or not self._trend_canvas:
             return
         watch = next((w for w in self._watches if w["name"] == self._trend_name), None)
         if not watch:
             return
-        hist = watch.get("history", [])
-        vals = [v for v in hist if isinstance(v, (int, float))]
+        vals = [v for v in watch.get("history", []) if isinstance(v, (int, float))]
 
-        W = 800; H = 260; PAD = 28; MAX_DOTS = 60
-        STEP = 12  # px per data point — 固定间距
+        H = 260; PAD = 28; STEP = 12
         COPPER = "#D99A5A"; GREEN = "#26A641"
         shapes: list[cv.Shape] = []
 
@@ -271,10 +269,10 @@ class DebugTab:
             span = vmax - vmin if vmax != vmin else 1
             if self._trend_info:
                 self._trend_info.value = f"{self._trend_name}:  min={vmin}  max={vmax}  cur={vals[-1]}"
-            recent = vals[-MAX_DOTS:]
             bottom_y = y_of(vmin, vmin, span)
-            n = len(recent)
-            # 画布宽度随点数增长，超出 560 时滚动自动生效
+            n = len(vals)
+
+            # 画布宽度 = 全部历史点 × 固定间距
             W = max(200, STEP * (n - 1) + 2 * PAD)
 
             # 1. 边框
@@ -285,8 +283,8 @@ class DebugTab:
             for pct in [0.25, 0.5, 0.75]:
                 y = PAD + (H - 2 * PAD) * (1 - pct)
                 shapes.append(cv.Line(PAD, y, W - PAD, y, paint=grid_paint))
-            # 3. 像素坐标
-            pts = [(PAD + i * STEP, y_of(v, vmin, span)) for i, v in enumerate(recent)]
+            # 3. 全部点的像素坐标
+            pts = [(PAD + i * STEP, y_of(v, vmin, span)) for i, v in enumerate(vals)]
 
             if n >= 2:
                 # 4. 填充
@@ -312,8 +310,11 @@ class DebugTab:
                     paint=ft.Paint(color=GREEN, style=ft.PaintingStyle.FILL)))
 
         self._trend_canvas.shapes = shapes
-        self._trend_canvas.width = W
+        self._trend_canvas.width = max(200, STEP * (len(vals) - 1) + 2 * PAD) if vals else 200
         self._trend_canvas.update()
+        # 滚到最新
+        if self._trend_scroll_row and vals:
+            await self._trend_scroll_row.scroll_to(offset=-1, duration=0)
         if self._trend_info:
             if not vals:
                 self._trend_info.value = f"{self._trend_name}:  0 samples"
@@ -328,6 +329,7 @@ class DebugTab:
             self._trend_dlg = None
         self._trend_canvas = None
         self._trend_info = None
+        self._trend_scroll_row = None
         if self._page:
             self._page.update()
 
