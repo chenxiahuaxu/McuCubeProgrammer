@@ -55,9 +55,23 @@ except Exception:  # pylint: disable=broad-exception-caught  # OK: top-level err
 DEFAULT_WEB_PORT = 8550
 
 
-def main(page: ft.Page) -> None:
+def _flet_main(page: ft.Page) -> None:
     """Flet 应用入口函数。"""
     App(page)
+
+
+def main() -> None:
+    """CLI entry point for `mcu-cube-programmer` command."""
+    args = _parse_args()
+
+    if args.web:
+        APP_URL = f"http://localhost:{args.port}"
+        add_log("INFO", f"[Web] 服务已启动 → {APP_URL}")
+        add_log("INFO", "请勿关闭此窗口，关闭将停止服务")
+        ft.run(_flet_main, view=ft.AppView.WEB_BROWSER, port=args.port)
+    else:
+        add_log("INFO", "[Desktop] 桌面模式已启动 (窗口大小 1024x768)")
+        ft.run(_flet_main)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -69,13 +83,4 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == "__main__":
-    args = _parse_args()
-
-    if args.web:
-        APP_URL = f"http://localhost:{args.port}"
-        add_log("INFO", f"[Web] 服务已启动 → {APP_URL}")
-        add_log("INFO", "请勿关闭此窗口，关闭将停止服务")
-        ft.run(main, view=ft.AppView.WEB_BROWSER, port=args.port)
-    else:
-        add_log("INFO", "[Desktop] 桌面模式已启动 (窗口大小 1024x768)")
-        ft.run(main)
+    main()
