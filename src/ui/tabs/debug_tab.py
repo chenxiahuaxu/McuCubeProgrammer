@@ -28,6 +28,9 @@ class DebugTab:
         self._watches: list[dict] = []
         self._watch_running: bool = False
         self._watch_column: ft.Column | None = None
+        self._trend_dlg: ft.AlertDialog | None = None
+        self._trend_content: ft.Column | None = None
+        self._trend_name: str = ""
         self._add_addr: ft.TextField | None = None
         self._add_size: ft.Dropdown | None = None
         self._add_name: ft.TextField | None = None
@@ -201,43 +204,87 @@ class DebugTab:
                 if len(w["history"]) > _HISTORY_MAX:
                     w["history"] = w["history"][-_HISTORY_MAX:]
             self._rebuild_watch_list()
+            # 自动刷新趋势弹窗
+            if self._trend_name and self._trend_content:
+                new_content = self._build_waveform(self._trend_name)
+                if self._trend_dlg:
+                    self._trend_dlg.content = new_content
+                    self._trend_content = new_content
+                    self._trend_dlg.update()
             await asyncio.sleep(1)
 
     def _show_trend(self, name: str) -> None:
-        """弹出指定变量的趋势图表对话框。"""
+        """弹出指定变量的波形图对话框（自动刷新）。"""
         watch = next((w for w in self._watches if w["name"] == name), None)
         if not watch:
             return
-        hist = watch.get("history", [])
-        vals = [v for v in hist if isinstance(v, (int, float))]
-        if not vals:
-            add_log("WARN", f"{name} 暂无历史数据")
-            return
-
-        color = Colors.ACCENT_COPPER
-        label = f"{name}:  min={min(vals)}  max={max(vals)}  cur={vals[-1]}"
-        bars = ft.Row(spacing=1, wrap=True)
-        vmax = max(vals); vmin = min(vals)
-        if vmax == vmin:
-            vmax += 1
-        for v in vals[-60:]:
-            h = max(2, int((v - vmin) / (vmax - vmin) * 24))
-            bars.controls.append(ft.Container(width=5, height=h, bgcolor=color, border_radius=1.5))
-
-        content_col = ft.Column(controls=[
-            ft.Text(label, size=Font.Size.CAPTION, color=color, font_family=Font.MONO),
-            ft.Divider(height=8),
-            bars,
-        ], spacing=Spacing.SM, scroll=ft.ScrollMode.AUTO, width=500, height=300)
-
-        dlg = ft.AlertDialog(
+        self._trend_name = name
+        self._trend_content = self._build_waveform(name)
+        self._trend_dlg = ft.AlertDialog(
             modal=True,
             open=True,
-            title=ft.Text(f"Trend — {name}"),
-            content=content_col,
-            actions=[ft.ElevatedButton(content=ft.Text("Close"), on_click=lambda _: self._close_dialog(dlg))],
+            title=ft.Text(f"Waveform — {name}"),
+            content=self._trend_content,
+            actions=[ft.ElevatedButton(content=ft.Text("Close"), on_click=lambda _: self._close_trend())],
         )
-        self._page.show_dialog(dlg)
+        self._page.show_dialog(self._trend_dlg)
+
+    def _build_waveform(self, name: str) -> ft.Column:
+        """用 Stack 构建波形图（stem + dot）。"""
+        watch = next((w for w in self._watches if w["name"] == name), None)
+        if not watch:
+            return ft.Column()
+        hist = watch.get("history", [])
+        vals = [v for v in hist if isinstance(v, (int, float))]
+
+        W = 520
+        H = 180
+        BASELINE = H - 10
+        STEP = 8
+        MAX_DOTS = 60
+
+        info = ft.Text(f"{name}:  0 samples", size=Font.Size.CAPTION, color=Colors.TEXT_DIM, font_family=Font.MONO)
+        wave_stack = ft.Stack(width=W, height=H)
+
+        if vals:
+            vmax = max(vals); vmin = min(vals)
+            span = vmax - vmin if vmax != vmin else 1
+            info.value = f"{name}:  min={vmin}  max={vmax}  cur={vals[-1]}"
+            recent = vals[-MAX_DOTS:]
+            for i, v in enumerate(recent):
+                ratio = (v - vmin) / span
+                y = BASELINE - int(ratio * (H - 24))
+                x = i * STEP + 4
+                # 竖线（stem）
+                wave_stack.controls.append(ft.Container(
+                    width=1, height=BASELINE - y,
+                    bgcolor=Colors.ACCENT_COPPER,
+                    left=x, top=y,
+                ))
+                # 圆点
+                wave_stack.controls.append(ft.Container(
+                    width=5, height=5,
+                    bgcolor=Colors.ACCENT_PRIMARY,
+                    border_radius=2.5,
+                    left=x - 2, top=y - 2,
+                ))
+
+        return ft.Column(controls=[
+            info,
+            ft.Divider(height=6),
+            wave_stack,
+        ], spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO, width=W + 20, height=280)
+
+    def _close_trend(self) -> None:
+        """关闭趋势弹窗并清空自动刷新状态。"""
+        self._trend_name = ""
+        if self._trend_dlg:
+            self._trend_dlg.open = False
+            self._trend_dlg.update()
+            self._trend_dlg = None
+        self._trend_content = None
+        if self._page:
+            self._page.update()
 
     # ── ELF 符号加载 ─────────────────────────────────────
     def _pick_elf(self) -> None:
