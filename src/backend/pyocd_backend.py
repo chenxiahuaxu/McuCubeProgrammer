@@ -482,25 +482,11 @@ class PyOCDBackend(BackendABC):
         if not elf_path or not os.path.isfile(elf_path):
             return []
 
-        # 用 ELF 解析符号地址，但不注入 target.elf（避免 ELF reader 拦截硬件内存读取）
-        try:
-            from elftools.elf.elffile import ELFFile
-            raw_elf = ELFFile(open(elf_path, "rb"))
-            from pyocd.debug.elf.decoder import ElfSymbolDecoder
-            sd = ElfSymbolDecoder(raw_elf)
-        except Exception as e:
-            _log.warning("Failed to open ELF: %s", e)
-            return []
+        # 用 property setter 加载 ELF（使 _get_elf_symbol_size 正常工作）
+        session.target.elf = elf_path
+        sd = session.target.elf.symbol_decoder
 
-        # 关键：清除 target.elf 后再创建 provider（provider 构造时缓存 debug context）
-        if session.target.elf is not None:
-            try:
-                session.target.elf.close()
-            except Exception:
-                pass
-            session.target._elf = None
-
-        # 适配器：symbol_decoder.get_symbol_for_name → get_symbol_value
+        # 诊断
         from pyocd.rtos.freertos import FreeRTOSThreadProvider as _FRT
         from src.utils.logger import add_log
         add_log("INFO", "=== RTOS symbol lookup ===")
