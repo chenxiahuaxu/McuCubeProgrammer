@@ -10,6 +10,7 @@ from typing import Any
 
 import flet as ft
 
+from src.i18n import t
 from src.ui.theme import Colors, Spacing
 
 # 厂家列表 + 芯片名前缀匹配规则
@@ -55,7 +56,7 @@ class TargetSelector:
         self._vendor_dd = ft.Dropdown(
             ref=self._vendor_ref,
             width=300,
-            hint_text="厂家",
+            hint_text=t("targetVendor"),
             dense=False,
             bgcolor=Colors.BG_ELEVATED,
             border=ft.Border(
@@ -75,7 +76,7 @@ class TargetSelector:
         self._chip_dd = ft.Dropdown(
             ref=self._chip_ref,
             width=260,
-            hint_text="选择芯片",
+            hint_text=t("targetChip"),
             editable=True,
             enable_filter=True,
             dense=False,
@@ -93,7 +94,7 @@ class TargetSelector:
         )
 
         self._pack_btn = ft.ElevatedButton(
-            content=ft.Text("安装 Pack"),
+            content=ft.Text(t("targetInstallPack")),
             icon=ft.Icons.ADD,
             on_click=self._on_pack_click,
         )
@@ -138,7 +139,7 @@ class TargetSelector:
         self._chip_ref.current.options = [
             ft.dropdown.Option(key=name, text=name) for name, _ in chips
         ]
-        self._chip_ref.current.hint_text = f"共 {len(chips)} 款芯片"
+        self._chip_ref.current.hint_text = t("targetCount", count=len(chips))
         self._chip_ref.current.update()
 
     def _on_select(self, e: ft.ControlEvent) -> None:
@@ -181,5 +182,5 @@ class TargetSelector:
         if self._chip_ref.current:
             self._chip_ref.current.disabled = loading
             if loading:
-                self._chip_ref.current.hint_text = "正在加载..."
+                self._chip_ref.current.hint_text = t("targetLoading")
             self._chip_ref.current.update()

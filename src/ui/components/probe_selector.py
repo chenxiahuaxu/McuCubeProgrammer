@@ -9,6 +9,7 @@ from collections.abc import Callable
 
 import flet as ft
 
+from src.i18n import t
 from src.ui.theme import Colors, Spacing
 
 
@@ -46,7 +47,7 @@ class ProbeSelector:
             menu_height=200,
             menu_width=340,
             dense=False,
-            hint_text="选择调试探针",
+            hint_text=t("probeSelectHint"),
             disabled=True,
             bgcolor=Colors.BG_ELEVATED,
             border=ft.Border(
@@ -63,7 +64,7 @@ class ProbeSelector:
         self._refresh_btn = ft.IconButton(
             ref=self._refresh_btn_ref,
             icon=ft.Icons.REFRESH,
-            tooltip="刷新探针列表",
+            tooltip=t("probeRefresh"),
             on_click=self._on_refresh_click,
         )
 
@@ -90,10 +91,10 @@ class ProbeSelector:
                         )
                     )
                 self._dropdown.disabled = False
-                self._dropdown.hint_text = "选择调试探针"
+                self._dropdown.hint_text = t("probeSelectHint")
             else:
                 self._dropdown.disabled = True
-                self._dropdown.hint_text = "未检测到探针"
+                self._dropdown.hint_text = t("probeNotFound")
             self._dropdown.update()
         finally:
             self.set_loading(False)
@@ -116,7 +117,7 @@ class ProbeSelector:
         if self._dropdown_ref.current:
             self._dropdown_ref.current.disabled = loading
             if loading:
-                self._dropdown_ref.current.hint_text = "正在扫描..."
+                self._dropdown_ref.current.hint_text = t("probeScanning")
             self._dropdown_ref.current.update()
         if self._refresh_btn_ref.current:
             self._refresh_btn_ref.current.disabled = loading

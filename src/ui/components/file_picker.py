@@ -10,6 +10,7 @@ from collections.abc import Callable
 
 import flet as ft
 
+from src.i18n import t
 from src.ui.theme import Colors, Font, Spacing
 from src.utils.config import load as load_config
 
@@ -38,13 +39,13 @@ class FirmwareFilePicker:
         return ft.Column(
             controls=[
                 ft.ElevatedButton(
-                    content=ft.Text("选择固件"),
+                    content=ft.Text(t("firmwareSelect")),
                     icon=ft.Icons.FOLDER_OPEN,
                     on_click=self._pick_file,
                 ),
                 ft.Text(
                     ref=self._path_ref,
-                    value="未选择文件",
+                    value=t("firmwareNotSelected"),
                     size=Font.Size.CAPTION,
                     color=Colors.TEXT_DIM,
                 ),
@@ -65,7 +66,7 @@ class FirmwareFilePicker:
 
     async def _pick_file(self, e: ft.ControlEvent) -> None:
         files = await self._picker.pick_files(
-            dialog_title="选择固件文件",
+            dialog_title=t("firmwareDialogTitle"),
             file_type=ft.FilePickerFileType.CUSTOM,
             allowed_extensions=self.ALLOWED_EXTENSIONS,
             allow_multiple=False,
@@ -84,6 +85,6 @@ class FirmwareFilePicker:
     def clear(self) -> None:
         self.selected_path = None
         if self._path_ref.current:
-            self._path_ref.current.value = "未选择文件"
+            self._path_ref.current.value = t("firmwareNotSelected")
             self._path_ref.current.color = Colors.TEXT_DIM
             self._path_ref.current.update()

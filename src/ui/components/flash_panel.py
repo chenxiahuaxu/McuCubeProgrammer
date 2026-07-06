@@ -9,6 +9,7 @@ from collections.abc import Callable
 
 import flet as ft
 
+from src.i18n import t
 from src.ui.theme import Colors, Font, Spacing
 
 
@@ -38,19 +39,19 @@ class FlashPanel:
         """返回烧录面板控件树。"""
         self._erase_btn = ft.OutlinedButton(
             ref=self._erase_btn_ref,
-            content=ft.Text("全片擦除"),
+            content=ft.Text(t("flashErase")),
             icon=ft.Icons.DELETE_FOREVER,
             on_click=lambda e: self.on_erase(),
         )
         self._flash_btn = ft.FilledButton(
             ref=self._flash_btn_ref,
-            content=ft.Text("开始烧录"),
+            content=ft.Text(t("flashStart")),
             icon=ft.Icons.FLASH_ON,
             on_click=lambda e: self.on_flash(),
         )
         self._cancel_btn = ft.OutlinedButton(
             ref=self._cancel_btn_ref,
-            content=ft.Text("取消"),
+            content=ft.Text(t("flashCancel")),
             icon=ft.Icons.CANCEL,
             visible=False,
             on_click=lambda e: self.on_cancel(),
@@ -64,7 +65,7 @@ class FlashPanel:
         )
         self._status = ft.Text(
             ref=self._status_ref,
-            value="就绪",
+            value=t("flashReady"),
             size=Font.Size.CAPTION,
             color=Colors.SUCCESS,
         )
