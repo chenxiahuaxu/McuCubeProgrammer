@@ -478,29 +478,27 @@ class PyOCDBackend(BackendABC):
 
     def get_rtos_threads(self, elf_path: str = "") -> list[dict]:
         session = self._require_session()
-        symbol_map: dict[str, int] = {}
-        if elf_path:
-            try:
-                from src.utils.elf_parser import parse_elf_symbols
-                for s in parse_elf_symbols(elf_path):
-                    symbol_map[s["name"]] = s["addr"]
-            except Exception:
-                pass
 
-        class _SymbolProvider:
-            def get_symbol_value(self, name: str) -> int | None:
-                return symbol_map.get(name)
+        # 加载 ELF 到 pyOCD 会话——供 RTOS provider 读取符号
+        if elf_path and os.path.isfile(elf_path):
+            try:
+                from pyocd.debug.elf.elf import ELFBinaryFile
+                session.target.elf = ELFBinaryFile(elf_path, session.target.memory_map)
+            except Exception as e:
+                _log.warning("Failed to load ELF into pyOCD: %s", e)
 
         try:
             from pyocd.rtos.freertos import FreeRTOSThreadProvider
             provider = FreeRTOSThreadProvider(session.target)
-            if not provider.init(_SymbolProvider()):
-                # 诊断缺哪些符号
+            # 使用 pyOCD 内置符号提供器（从 session.target.elf 提取）
+            from pyocd.debug.elf.elf import ElfSymbolDecoder
+            decoder = ElfSymbolDecoder(session.target.elf) if session.target.elf else None
+            if decoder is None:
+                return []
+            if not provider.init(decoder):
                 required = FreeRTOSThreadProvider.FREERTOS_SYMBOLS
-                found = [n for n in required if n in symbol_map]
-                missing = [n for n in required if n not in symbol_map]
-                _log.warning("FreeRTOS init failed. Found: %s. Missing: %s. ELF symbols total: %d",
-                            found, missing, len(symbol_map))
+                _log.warning("FreeRTOS init failed. Required: %s. ELF: %s",
+                             required, elf_path)
                 return []
             provider.read_from_target = True
             provider.update_threads()
