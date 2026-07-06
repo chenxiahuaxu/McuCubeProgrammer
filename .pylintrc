@@ -3,37 +3,18 @@
 ignored-modules=flet
 
 [MESSAGES CONTROL]
-# Disable checks that conflict with project conventions
+# Only disable what's truly unavoidable in this project's tech stack
 disable=
-    C0114,  # missing-module-docstring
-    C0115,  # missing-class-docstring
-    C0116,  # missing-function-docstring
-    C0103,  # invalid-name (test constants)
-    C0301,  # line-too-long
-    C0321,  # multiple-statements (inline patterns)
-    C0413,  # wrong-import-position (sys.path manipulation)
-    C0415,  # import-outside-toplevel (lazy imports)
-    C1803,  # use-implicit-booleaness (style preference)
-    W0106,  # expression-not-assigned (one-liner handlers)
-    W0108,  # unnecessary-lambda (legitimate use)
-    W0201,  # attribute-defined-outside-init (flet UI build pattern)
-    W0212,  # protected-access (tests + internal access)
-    W0612,  # unused-variable (destructuring)
-    W0613,  # unused-argument (event handlers)
+    C0114,  # missing-module-docstring (tests)
+    C0115,  # missing-class-docstring (tests)
+    C0116,  # missing-function-docstring (tests)
+    W0201,  # attribute-defined-outside-init (flet UI build() pattern)
+    W0212,  # protected-access (tests + internal component usage)
+    W0613,  # unused-argument (framework event callbacks)
     W0621,  # redefined-outer-name (pytest fixtures)
-    W0622,  # redefined-builtin (config set() method)
-    W0718,  # broad-exception-caught (UI/top-level handlers)
-    W1510,  # subprocess-run-check (handled with try/except)
-    W2301,  # unnecessary-ellipsis (abstract interface methods)
-    R0801,  # duplicate-code (similar UI patterns)
-    R0903,  # too-few-public-methods (data/config classes)
-    R0913,  # too-many-arguments (component constructors)
-    R0914,  # too-many-locals (complex methods) 
-    R0915,  # too-many-statements (complex methods)
-    R0917,  # too-many-positional-arguments (component constructors)
-    R1705,  # no-else-return (style preference)
-    R1721,  # unnecessary-comprehension (style preference)
-    R1732,  # consider-using-with (style preference)
+    W2301,  # unnecessary-ellipsis (abstract interface stubs)
+    C0413,  # wrong-import-position (sys.path setup in main.py)
+    C0415,  # import-outside-toplevel (lazy imports for optional deps)
 
 [FORMAT]
 max-line-length=100
