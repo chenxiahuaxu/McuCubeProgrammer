@@ -257,7 +257,10 @@ class ConnectionPanel:
 
     def _on_drag(self, e: ft.DragUpdateEvent) -> None:
         """拖拽面板右边缘调整宽度。"""
-        new_w = max(PANEL_MIN, min(PANEL_MAX, self._panel_width + int(e.delta_x)))
+        delta = getattr(e, "delta_x", 0) or getattr(e, "deltax", 0)
+        if not delta:
+            return
+        new_w = max(PANEL_MIN, min(PANEL_MAX, self._panel_width + int(delta)))
         if new_w == self._panel_width:
             return
         self._panel_width = new_w
