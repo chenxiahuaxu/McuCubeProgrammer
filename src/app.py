@@ -183,12 +183,13 @@ class App:  # pylint: disable=too-few-public-methods
             # 复用已存在的面板（保留其状态）
             if not hasattr(self, "connection_panel"):
                 from src.ui.panels.connection_panel import ConnectionPanel
-                self.connection_panel = ConnectionPanel(
-                    page=self.page,
-                    probe_manager=self.probe_manager,
-                    target_manager=self.target_manager,
-                    on_resize=self._on_panel_resize,
-                )
+            self.connection_panel = ConnectionPanel(
+                page=self.page,
+                probe_manager=self.probe_manager,
+                target_manager=self.target_manager,
+                backend=self.flash_controller._backend,
+                on_resize=self._on_panel_resize,
+            )
             from src.ui.tabs.about_tab import AboutTab
             from src.ui.tabs.chip_info_tab import ChipInfoTab
             from src.ui.tabs.flash_tab import FlashTab
