@@ -22,6 +22,8 @@
   "chipSectionMemory": "Memory",
   "chipSectionFlash": "Flash Regions",
   "chipSectionRam": "RAM Regions",
+  "chipHexDump": "Hex Dump",
+  "chipHexRead": "Read",
   "chipRegionName": "Region",
   "chipRegionAddress": "Address",
   "chipRegionSize": "Size",

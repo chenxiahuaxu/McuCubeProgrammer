@@ -23,6 +23,8 @@
   "chipSectionMemory": "存储概览",
   "chipSectionFlash": "Flash 区域",
   "chipSectionRam": "RAM 区域",
+  "chipHexDump": "Hex Dump",
+  "chipHexRead": "读取",
   "chipRegionName": "区域",
   "chipRegionAddress": "地址范围",
   "chipRegionSize": "容量",

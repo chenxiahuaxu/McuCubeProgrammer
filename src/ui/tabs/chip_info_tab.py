@@ -106,6 +106,7 @@ class ChipInfoTab:
         self._build_memory_card(info)
         self._build_flash_regions_card(info)
         self._build_ram_regions_card(info)
+        self._build_hex_dump_card()
 
     def _refresh(self) -> None:
         self._populate()
@@ -284,3 +285,80 @@ class ChipInfoTab:
             ],
             spacing=Spacing.SM,
         )
+
+    # ── Hex Dump ─────────────────────────────────────────
+    def _build_hex_dump_card(self) -> None:
+        self._hex_addr = ft.TextField(
+            value="0x08000000", width=140, text_size=12,
+            prefix_icon=ft.Icons.MEMORY,
+        )
+        self._hex_size = ft.Dropdown(
+            width=90, dense=True, text_size=12, value="256",
+            options=[
+                ft.dropdown.Option("64"), ft.dropdown.Option("128"),
+                ft.dropdown.Option("256"), ft.dropdown.Option("512"),
+                ft.dropdown.Option("1024"),
+            ],
+        )
+        self._hex_output = ft.Text(
+            "", size=Font.Size.CAPTION, font_family=Font.MONO,
+            color=Colors.TEXT_PRIMARY,
+        )
+        read_btn = ft.ElevatedButton(
+            content=ft.Text(t("chipHexRead"), size=Font.Size.CAPTION),
+            icon=ft.Icons.DOWNLOAD,
+            on_click=lambda _: self._do_hex_read(),
+        )
+
+        self._content.controls.append(
+            card_container(
+                content=ft.Column(
+                    controls=[
+                        ft.Text(t("chipHexDump"), size=Font.Size.HEADING,
+                                weight=600, color=Colors.ACCENT_COPPER),
+                        section_divider(),
+                        ft.Row(
+                            controls=[self._hex_addr, self._hex_size, read_btn],
+                            spacing=Spacing.SM,
+                        ),
+                        ft.Container(
+                            content=self._hex_output,
+                            padding=Spacing.SM,
+                            border_radius=4,
+                            border=ft.Border(
+                                top=ft.BorderSide(1, Colors.BORDER),
+                                left=ft.BorderSide(1, Colors.BORDER),
+                                right=ft.BorderSide(1, Colors.BORDER),
+                                bottom=ft.BorderSide(1, Colors.BORDER),
+                            ),
+                        ),
+                    ],
+                    spacing=Spacing.SM,
+                ),
+            ),
+        )
+
+    def _do_hex_read(self) -> None:
+        if not self._backend or not self._backend.is_connected:
+            self._hex_output.value = t("chipNotConnected")
+            self._hex_output.update()
+            return
+        try:
+            addr = int(self._hex_addr.value, 0)
+            size = int(self._hex_size.value)
+            data = self._backend.read_memory(addr, size)
+            self._hex_output.value = self._format_hex(data, addr)
+        except Exception as e:
+            self._hex_output.value = f"Error: {e}"
+        self._hex_output.update()
+
+    @staticmethod
+    def _format_hex(data: bytes, base_addr: int) -> str:
+        lines = []
+        for i in range(0, len(data), 16):
+            chunk = data[i:i + 16]
+            hex_part = " ".join(f"{b:02X}" for b in chunk)
+            hex_part = f"{hex_part:<48}"
+            ascii_part = "".join(chr(b) if 32 <= b < 127 else "." for b in chunk)
+            lines.append(f"0x{base_addr + i:08X}: {hex_part} {ascii_part}")
+        return "\n".join(lines)
