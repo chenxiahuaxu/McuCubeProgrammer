@@ -124,6 +124,7 @@
   "debugWatchValue": "Value",
   "debugElfTitle": "ELF Symbols",
   "debugElfLoad": "Load",
+  "debugElfView": "View Symbols",
   "debugChartTitle": "Memory Trend",
   "debugRtosTitle": "RTOS Tasks",
   "debugRtosNone": "No RTOS detected or not supported",

@@ -22,6 +22,7 @@ class DebugTab:
     def __init__(self, backend: BackendABC, loop: asyncio.AbstractEventLoop):
         self._backend = backend
         self._loop = loop
+        self._page: ft.Page | None = None
         self._state_text: ft.Text | None = None
         self._toggle_btn: ft.ElevatedButton | None = None
         self._reset_btn: ft.ElevatedButton | None = None
@@ -32,7 +33,8 @@ class DebugTab:
         self._add_size: ft.Dropdown | None = None
         self._add_name: ft.TextField | None = None
         self._elf_path: ft.Text | None = None
-        self._elf_symbols: ft.Column | None = None
+        self._elf_view_btn: ft.TextButton | None = None
+        self._elf_symbols_data: list[dict] = []
         self._chart_canvas: ft.Column | None = None
         self._sample_count: int = 0
         self._rtos_column: ft.Column | None = None
@@ -51,33 +53,39 @@ class DebugTab:
         self._watch_column = ft.Column(spacing=Spacing.XS)
         self._chart_canvas = ft.Column(spacing=Spacing.XS)
         self._elf_path = ft.Text("", size=Font.Size.CAPTION, color=Colors.TEXT_DIM)
-        self._elf_symbols = ft.Column(spacing=Spacing.XS)
+        self._elf_view_btn = ft.TextButton(text=t("debugElfView"), icon=ft.Icons.LIST, visible=False, on_click=lambda _: self._show_symbols())
+        self._elf_symbols_data: list[dict] = []
         self._rtos_column = ft.Column(spacing=Spacing.XS)
 
         return ft.ListView(
             controls=[
-                card_container(content=ft.Column(controls=[
-                    ft.Text(t("debugTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
-                    ft.Row(controls=[ft.Container(width=8, height=8, border_radius=4, bgcolor=Colors.TEXT_DIM), self._state_text], spacing=Spacing.SM),
-                    ft.Row(controls=[self._toggle_btn, self._reset_btn], spacing=Spacing.MD),
-                ], spacing=Spacing.LG)),
-                card_container(content=ft.Column(controls=[
-                    ft.Text(t("debugWatchTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
-                    ft.Row(controls=[self._add_name, self._add_addr, self._add_size, add_btn], spacing=Spacing.SM),
-                    self._watch_column,
-                ], spacing=Spacing.SM)),
-                card_container(content=ft.Column(controls=[
-                    ft.Text(t("debugChartTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
-                    self._chart_canvas,
-                ], spacing=Spacing.SM)),
+                # 1. ELF 符号表（最前面——调试基础）
                 card_container(content=ft.Column(controls=[
                     ft.Text(t("debugElfTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
                     ft.Row(controls=[
                         ft.ElevatedButton(content=ft.Text(t("debugElfLoad"), size=Font.Size.CAPTION), icon=ft.Icons.FOLDER_OPEN, on_click=lambda _: self._pick_elf()),
                         self._elf_path,
+                        self._elf_view_btn,
                     ], spacing=Spacing.SM),
-                    self._elf_symbols,
                 ], spacing=Spacing.SM)),
+                # 2. 目标控制
+                card_container(content=ft.Column(controls=[
+                    ft.Text(t("debugTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
+                    ft.Row(controls=[ft.Container(width=8, height=8, border_radius=4, bgcolor=Colors.TEXT_DIM), self._state_text], spacing=Spacing.SM),
+                    ft.Row(controls=[self._toggle_btn, self._reset_btn], spacing=Spacing.MD),
+                ], spacing=Spacing.LG)),
+                # 3. 变量监控
+                card_container(content=ft.Column(controls=[
+                    ft.Text(t("debugWatchTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
+                    ft.Row(controls=[self._add_name, self._add_addr, self._add_size, add_btn], spacing=Spacing.SM),
+                    self._watch_column,
+                ], spacing=Spacing.SM)),
+                # 4. 内存趋势
+                card_container(content=ft.Column(controls=[
+                    ft.Text(t("debugChartTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
+                    self._chart_canvas,
+                ], spacing=Spacing.SM)),
+                # 5. RTOS
                 card_container(content=ft.Column(controls=[
                     ft.Row(controls=[
                         ft.Text(t("debugRtosTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
@@ -235,18 +243,31 @@ class DebugTab:
         try:
             symbols = parse_elf_symbols(path)
             add_log("INFO", f"从 ELF 加载 {len(symbols)} 个全局变量符号")
-            self._elf_symbols.controls.clear()
-            for s in symbols:
-                self._elf_symbols.controls.append(ft.Row(controls=[
-                    ft.Text(s["name"], width=180, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
-                    ft.Text(f"0x{s['addr']:08X}", width=110, size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY, font_family=Font.MONO),
-                    ft.Text(str(s["size"]), width=60, size=Font.Size.CAPTION, color=Colors.TEXT_DIM),
-                    ft.IconButton(icon=ft.Icons.ADD, icon_size=14, icon_color=Colors.ACCENT_PRIMARY,
-                                  on_click=lambda e, a=s["addr"], n=s["name"], sz=s["size"]: self._watch_symbol(a, n, sz)),
-                ], spacing=Spacing.SM))
-            self._elf_symbols.update()
+            self._elf_symbols_data = symbols
+            self._elf_view_btn.visible = True
+            self._elf_view_btn.update()
         except Exception as e:
             add_log("ERROR", f"ELF 解析失败: {e}")
+
+    def _show_symbols(self) -> None:
+        """弹出对话框展示符号表。"""
+        if not self._page or not self._elf_symbols_data:
+            return
+        rows: list[ft.Control] = []
+        for s in self._elf_symbols_data[:200]:  # 最多 200 个
+            rows.append(ft.Row(controls=[
+                ft.Text(s["name"], width=180, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
+                ft.Text(f"0x{s['addr']:08X}", width=110, size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY, font_family=Font.MONO),
+                ft.Text(str(s["size"]), width=60, size=Font.Size.CAPTION, color=Colors.TEXT_DIM),
+                ft.IconButton(icon=ft.Icons.ADD, icon_size=14, icon_color=Colors.ACCENT_PRIMARY,
+                              on_click=lambda e, a=s["addr"], n=s["name"], sz=s["size"]: self._watch_symbol(a, n, sz)),
+            ], spacing=Spacing.SM))
+        dlg = ft.AlertDialog(
+            title=ft.Text(f"ELF Symbols ({len(self._elf_symbols_data)})"),
+            content=ft.Container(content=ft.Column(controls=rows, spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO), width=600, height=500),
+            actions=[ft.TextButton("Close", on_click=lambda _: self._page.close(dlg))],
+        )
+        self._page.open(dlg)
 
     def _watch_symbol(self, addr: int, name: str, size: int) -> None:
         size = max(size, 1) if size < 16 else 4
