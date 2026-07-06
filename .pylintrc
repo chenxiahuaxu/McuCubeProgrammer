@@ -15,6 +15,7 @@ disable=
     W2301,  # unnecessary-ellipsis (abstract interface stubs)
     C0413,  # wrong-import-position (sys.path setup in main.py)
     C0415,  # import-outside-toplevel (lazy imports for optional deps)
+    R0801,  # duplicate-code (flet UI border boilerplate across tabs)
 
 [FORMAT]
 max-line-length=100

@@ -33,7 +33,7 @@ class FlashTab:
       - 将 FlashController 的进度回调桥接到 UI 主线程
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         page: ft.Page,
         probe_manager: ProbeManager,
