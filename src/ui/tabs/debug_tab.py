@@ -47,7 +47,7 @@ class DebugTab:
         self._apply_state()
 
         self._add_addr = ft.TextField(hint_text="0x20000000", width=130, text_size=12)
-        self._add_size = ft.Dropdown(width=80, dense=True, text_size=12, value="4",
+        self._add_size = ft.Dropdown(width=100, dense=True, text_size=12, value="4",
             options=[ft.dropdown.Option("1", "u8"), ft.dropdown.Option("2", "u16"), ft.dropdown.Option("4", "u32"), ft.dropdown.Option("4f", "f32")])
         self._add_name = ft.TextField(hint_text=t("debugWatchName"), width=100, text_size=12)
         add_btn = ft.ElevatedButton(content=ft.Text(t("debugWatchAdd"), size=Font.Size.CAPTION), icon=ft.Icons.ADD, on_click=lambda _: self._add_watch())
