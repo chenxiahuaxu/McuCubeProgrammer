@@ -482,34 +482,18 @@ class PyOCDBackend(BackendABC):
         if not elf_path or not os.path.isfile(elf_path):
             return []
 
-        # 加载 ELF 符号表
-        try:
-            from elftools.elf.elffile import ELFFile as RawELFFile
-            raw_elf = RawELFFile(open(elf_path, "rb"))
-        except Exception as e:
-            _log.warning("Failed to open ELF: %s", e)
-            return []
+        # 通过 property setter 加载 ELF（pyOCD 内部创建 ELFBinaryFile）
+        session.target.elf = elf_path
 
-        try:
-            from pyocd.debug.elf.decoder import ElfSymbolDecoder
-            elf_decoder = ElfSymbolDecoder(raw_elf)
-        except Exception as e:
-            _log.warning("Failed to decode ELF symbols: %s", e)
-            return []
-
-        # 适配器：ElfSymbolDecoder.get_symbol_for_name → get_symbol_value
-        class _SymbolAdapter:
+        # 适配器：symbol_decoder.get_symbol_for_name → get_symbol_value
+        sd = session.target.elf.symbol_decoder
+        class _Sym:
             def get_symbol_value(self, name: str) -> int | None:
-                sym = elf_decoder.get_symbol_for_name(name)
+                sym = sd.get_symbol_for_name(name)
                 return sym.address if sym else None
 
-        # 包装器：让 target.elf 暴露 symbol_decoder（_get_elf_symbol_size 需要）
-        class _ElfWrapper:
-            symbol_decoder = elf_decoder
-        session.target.elf = _ElfWrapper()
-
         try:
-            # 按顺序尝试所有已知 RTOS provider，第一个 init 成功的即采用
+            # 按顺序尝试所有已知 RTOS provider
             providers = [
                 ("FreeRTOS", "pyocd.rtos.freertos", "FreeRTOSThreadProvider"),
                 ("RTX5", "pyocd.rtos.rtx5", "RTX5ThreadProvider"),
@@ -523,7 +507,7 @@ class PyOCDBackend(BackendABC):
                     mod = __import__(module_path, fromlist=[class_name])
                     provider_cls = getattr(mod, class_name)
                     provider = provider_cls(session.target)
-                    if provider.init(_SymbolAdapter()):
+                    if provider.init(_Sym()):
                         _log.info("RTOS detected: %s", name)
                         break
                     provider = None
