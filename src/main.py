@@ -65,8 +65,8 @@ def main() -> None:
     args = _parse_args()
 
     if args.web:
-        APP_URL = f"http://localhost:{args.port}"
-        add_log("INFO", f"[Web] 服务已启动 → {APP_URL}")
+        app_url = f"http://localhost:{args.port}"
+        add_log("INFO", f"[Web] 服务已启动 → {app_url}")
         add_log("INFO", "请勿关闭此窗口，关闭将停止服务")
         ft.run(_flet_main, view=ft.AppView.WEB_BROWSER, port=args.port)
     else:
