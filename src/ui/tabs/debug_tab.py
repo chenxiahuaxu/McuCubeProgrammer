@@ -34,7 +34,7 @@ class DebugTab:
         self._add_name: ft.TextField | None = None
         self._elf_path: ft.Text | None = None
         self._elf_full_path: str = ""
-        self._elf_view_btn: ft.TextButton | None = None
+        self._elf_view_btn: ft.ElevatedButton | None = None
         self._elf_symbols_data: list[dict] = []
         self._chart_canvas: ft.Column | None = None
         self._sample_count: int = 0
@@ -55,7 +55,7 @@ class DebugTab:
         self._watch_column = ft.Column(spacing=Spacing.XS)
         self._chart_canvas = ft.Column(spacing=Spacing.XS)
         self._elf_path = ft.Text("", size=Font.Size.CAPTION, color=Colors.TEXT_DIM, no_wrap=True, tooltip="")
-        self._elf_view_btn = ft.TextButton(content=ft.Text(t("debugElfView")), icon=ft.Icons.LIST, visible=False, on_click=lambda _: self._show_symbols())
+        self._elf_view_btn = ft.ElevatedButton(content=ft.Text(t("debugElfView")), icon=ft.Icons.LIST, disabled=True, on_click=lambda _: self._show_symbols())
         self._elf_symbols_data: list[dict] = []
         self._rtos_column = ft.Column(spacing=Spacing.XS)
 
@@ -248,7 +248,7 @@ class DebugTab:
             symbols = parse_elf_symbols(path)
             add_log("INFO", f"从 ELF 加载 {len(symbols)} 个全局变量符号")
             self._elf_symbols_data = symbols
-            self._elf_view_btn.visible = True
+            self._elf_view_btn.disabled = False
             self._elf_view_btn.update()
         except Exception as e:
             add_log("ERROR", f"ELF 解析失败: {e}")
@@ -274,7 +274,7 @@ class DebugTab:
                 modal=True,
                 title=ft.Text(f"ELF Symbols ({len(self._elf_symbols_data)})"),
                 content=ft.Container(content=ft.Column(controls=rows, spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO), width=600, height=500),
-                actions=[ft.TextButton(content=ft.Text("Close"), on_click=lambda _: self._close_dialog(dlg))],
+                actions=[ft.ElevatedButton(content=ft.Text("Close"), on_click=lambda _: self._close_dialog(dlg))],
             )
             self._page.dialog = dlg
             self._page.update()
