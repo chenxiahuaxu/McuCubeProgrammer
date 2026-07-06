@@ -332,15 +332,15 @@ class ConnectionPanel:
         """连接目标芯片。"""
         target_name = self.target_mgr.get_selected_target()
         if not target_name:
-            self.page.show_snack_bar(
-                ft.SnackBar(content=ft.Text(t("connSelectTarget")), bgcolor=Colors.WARNING),
-            )
+            self.page.snack_bar = ft.SnackBar(content=ft.Text(t("connSelectTarget")), bgcolor=Colors.WARNING)
+            self.page.snack_bar.open = True
+            self.page.update()
             return
         probe = self.probe_mgr.get_selected_probe()
         if not probe:
-            self.page.show_snack_bar(
-                ft.SnackBar(content=ft.Text(t("connSelectProbe")), bgcolor=Colors.WARNING),
-            )
+            self.page.snack_bar = ft.SnackBar(content=ft.Text(t("connSelectProbe")), bgcolor=Colors.WARNING)
+            self.page.snack_bar.open = True
+            self.page.update()
             return
 
         self._connect_btn.disabled = True
@@ -365,12 +365,12 @@ class ConnectionPanel:
             self._connected = True
         except Exception as ex:
             add_log("ERROR", f"[Connect] FAILED: {ex}")
-            self.page.show_snack_bar(
-                ft.SnackBar(
-                    content=ft.Text(f"{t('connFailed')}: {ex}"),
-                    bgcolor=Colors.ERROR,
-                ),
+            self.page.snack_bar = ft.SnackBar(
+                content=ft.Text(f"{t('connFailed')}: {ex}"),
+                bgcolor=Colors.ERROR,
             )
+            self.page.snack_bar.open = True
+            self.page.update()
         finally:
             self._update_conn_state()
 

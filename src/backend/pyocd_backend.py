@@ -89,8 +89,9 @@ def _extract_target_info(target: Target) -> TargetInfo:
     )
     for r in all_regions:
         _log.info(
-            "  region: name=%s type=%s start=0x%08X length=%d sector=%d access=%s",
-            r.name, r.type, r.start, r.length, r.sector_size, r.access,
+            "  region: name=%s type=%s start=0x%08X length=%d sector=%s access=%s",
+            r.name, r.type, r.start, r.length,
+            getattr(r, "sector_size", "N/A"), r.access,
         )
 
     flash_regions: list[FlashRegion] = []
@@ -100,7 +101,7 @@ def _extract_target_info(target: Target) -> TargetInfo:
                 name=region.name,
                 start=region.start,
                 length=region.length,
-                sector_size=region.sector_size,
+                sector_size=getattr(region, "sector_size", 0) or 0,
                 access=region.access,
             )
         )
