@@ -22,7 +22,7 @@ PANEL_MAX: int = 420
 
 
 def _section_label(text: str) -> ft.Text:
-    return ft.Text(text, size=Font.Size.MICRO, color=Colors.TEXT_DIM)
+    return ft.Text(text, size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY)
 
 
 def _build_dropdown(ref, width: int | None = None, expand: bool = False) -> ft.Dropdown:
@@ -108,7 +108,6 @@ class ConnectionPanel:
         from src.ui.components.target_selector import _VENDORS, _match_vendor
 
         vendor_dd = _build_dropdown(self._vendor_ref, self._dd_width)
-        vendor_dd.hint_text = t("targetVendor")
         vendor_dd.options = [
             ft.dropdown.Option(key=k, text=f"{label} ({k})") for k, label, _ in _VENDORS
         ]
@@ -117,7 +116,6 @@ class ConnectionPanel:
         )
 
         chip_dd = _build_dropdown(self._chip_ref, self._dd_width)
-        chip_dd.hint_text = t("targetChip")
         chip_dd.editable = True
         chip_dd.enable_filter = True
         chip_dd.menu_height = 280
@@ -129,25 +127,24 @@ class ConnectionPanel:
                     ref=self._body_ref,
                     content=ft.Column(
                         scroll=ft.ScrollMode.AUTO,
-                        controls=[
-                            ft.Row(
-                                controls=[
-                                    ft.Text(t("tabProbe"), size=Font.Size.BODY, weight=500,
-                                            color=Colors.TEXT_PRIMARY),
-                                    refresh_btn,
-                                ],
-                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                            ),
-                            probe_dd,
-                            _section_label(t("connInterfaceLabel")),
-                            interface_group,
-                            ft.Divider(height=1, color=Colors.DIVIDER),
-                            _section_label(t("targetVendor")),
-                            vendor_dd,
-                            _section_label(t("targetChip")),
-                            chip_dd,
-                        ],
+                    controls=[
+                        ft.Row(
+                            controls=[
+                                _section_label(t("tabProbe")),
+                                refresh_btn,
+                            ],
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        ),
+                        probe_dd,
+                        _section_label(t("connInterfaceLabel")),
+                        interface_group,
+                        ft.Divider(height=1, color=Colors.DIVIDER),
+                        _section_label(t("targetVendor")),
+                        vendor_dd,
+                        _section_label(t("targetChip")),
+                        chip_dd,
+                    ],
                         spacing=Spacing.SM,
                     ),
                     width=self._panel_width,
