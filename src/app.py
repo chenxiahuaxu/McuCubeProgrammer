@@ -211,6 +211,7 @@ class App:  # pylint: disable=too-few-public-methods
                 target_manager=self.target_manager,
             )
             chip_info_tab = ChipInfoTab(backend=self.flash_controller._backend)
+            self.chip_info_tab = chip_info_tab
             log_tab = LogTab(log_view=self.log_view, page=self.page)
             settings_tab = SettingsTab(page=self.page)
             about_tab = AboutTab()
@@ -282,6 +283,7 @@ class App:  # pylint: disable=too-few-public-methods
             animation_duration=300,
             length=length,
             expand=True,
+            on_change=self._on_tab_change,
             content=ft.Column(
                 expand=True,
                 controls=[
@@ -299,6 +301,11 @@ class App:  # pylint: disable=too-few-public-methods
             ),
         )
         return self.tabs
+
+    def _on_tab_change(self, e: ft.ControlEvent) -> None:
+        """标签页切换时自动刷新芯片信息面板。"""
+        if e.control.selected_index == 2 and hasattr(self, "chip_info_tab"):
+            self.chip_info_tab.refresh()
 
     @staticmethod
     def _placeholder_content(text: str) -> ft.Container:
