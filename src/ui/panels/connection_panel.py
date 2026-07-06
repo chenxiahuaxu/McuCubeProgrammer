@@ -10,6 +10,7 @@ from collections.abc import Callable
 
 import flet as ft
 
+from src.backend.interface import BackendABC
 from src.i18n import t
 from src.logic.probe_manager import ProbeManager
 from src.logic.target_manager import TargetManager
@@ -53,11 +54,13 @@ class ConnectionPanel:
         page: ft.Page,
         probe_manager: ProbeManager,
         target_manager: TargetManager,
+        backend: BackendABC,
         on_resize: Callable[[int], None] | None = None,
     ) -> None:
         self.page = page
         self.probe_mgr = probe_manager
         self.target_mgr = target_manager
+        self._backend = backend
         self._on_resize = on_resize
         self._panel_width: int = PANEL_WIDTH
         self._dd_width: int = PANEL_WIDTH - 30
@@ -68,6 +71,14 @@ class ConnectionPanel:
         self._interface_ref = ft.Ref[ft.RadioGroup]()
         self._body_ref = ft.Ref[ft.Container]()
         self._scanning: bool = False
+
+        # 连接状态（懒检查：build 时从 backend 同步）
+        self._connected: bool = False
+        self._conn_section: ft.Column | None = None
+        self._state_dot: ft.Container | None = None
+        self._state_label: ft.Text | None = None
+        self._connect_btn: ft.ElevatedButton | None = None
+        self._disconnect_btn: ft.OutlinedButton | None = None
 
         cfg = cfg_load()
         self._interface: str = cfg.get("interface", "swd")
@@ -144,6 +155,9 @@ class ConnectionPanel:
                         vendor_dd,
                         _section_label(t("targetChip")),
                         chip_dd,
+                        ft.Divider(height=1, color=Colors.DIVIDER),
+                        _section_label(t("connConnect")),
+                        self._build_conn_section(),
                     ],
                         spacing=Spacing.SM,
                     ),
@@ -252,6 +266,129 @@ class ConnectionPanel:
     def _on_interface_change(self, e: ft.ControlEvent) -> None:
         self._interface = e.control.value
         self._save_config()
+
+    # ── 连接 / 断开 ──────────────────────────────────────
+
+    def _build_conn_section(self) -> ft.Column:
+        """构建连接状态指示器 + 按钮区域。"""
+        self._state_dot = ft.Container(
+            width=8, height=8, border_radius=4, bgcolor=Colors.TEXT_DIM,
+        )
+        self._state_label = ft.Text(
+            t("connDisconnected"), size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY,
+        )
+        self._connect_btn = ft.ElevatedButton(
+            text=t("connConnect"),
+            icon=ft.Icons.LINK,
+            style=ft.ButtonStyle(
+                bgcolor=Colors.ACCENT_PRIMARY,
+                color=Colors.TEXT_PRIMARY,
+                padding=ft.Padding(Spacing.SM, Spacing.XS, Spacing.SM, Spacing.XS),
+                text_style=ft.TextStyle(size=Font.Size.CAPTION),
+            ),
+            on_click=self._on_connect,
+            expand=True,
+        )
+        self._disconnect_btn = ft.OutlinedButton(
+            text=t("connDisconnect"),
+            icon=ft.Icons.LINK_OFF,
+            style=ft.ButtonStyle(
+                color=Colors.ERROR,
+                side=ft.BorderSide(1, Colors.ERROR),
+                padding=ft.Padding(Spacing.SM, Spacing.XS, Spacing.SM, Spacing.XS),
+                text_style=ft.TextStyle(size=Font.Size.CAPTION),
+            ),
+            on_click=self._on_disconnect,
+            expand=True,
+        )
+
+        self._conn_section = ft.Column(
+            controls=[
+                ft.Row(
+                    controls=[self._state_dot, self._state_label],
+                    spacing=Spacing.SM,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                self._connect_btn,
+                self._disconnect_btn,
+            ],
+            spacing=Spacing.SM,
+        )
+
+        # 从 backend 同步实际连接状态
+        self._connected = self._backend.is_connected
+        self._update_conn_state()
+        return self._conn_section
+
+    def _on_connect(self, _e: ft.ControlEvent) -> None:
+        """连接目标芯片。"""
+        target_name = self.target_mgr.get_selected_target()
+        if not target_name:
+            self.page.show_snack_bar(
+                ft.SnackBar(content=ft.Text(t("connSelectTarget")), bgcolor=Colors.WARNING),
+            )
+            return
+        probe = self.probe_mgr.get_selected_probe()
+        if not probe:
+            self.page.show_snack_bar(
+                ft.SnackBar(content=ft.Text(t("connSelectProbe")), bgcolor=Colors.WARNING),
+            )
+            return
+
+        self._connect_btn.disabled = True
+        self._connect_btn.text = t("connConnecting")
+        self._connect_btn.update()
+
+        cfg = cfg_load()
+        frequency = cfg.get("swd_frequency", 200_000)
+
+        try:
+            self._backend.connect(
+                target=target_name,
+                probe_uid=probe.unique_id,
+                frequency=frequency,
+            )
+            self._connected = True
+        except Exception as ex:
+            self.page.show_snack_bar(
+                ft.SnackBar(
+                    content=ft.Text(f"{t('connFailed')}: {ex}"),
+                    bgcolor=Colors.ERROR,
+                ),
+            )
+        finally:
+            self._update_conn_state()
+
+    def _on_disconnect(self, _e: ft.ControlEvent) -> None:
+        """断开目标芯片连接。"""
+        try:
+            self._backend.disconnect()
+        except Exception:
+            pass
+        self._connected = False
+        self._update_conn_state()
+
+    def _update_conn_state(self) -> None:
+        """根据 _connected 刷新指示器和按钮可见性。"""
+        if self._connected:
+            self._state_dot.bgcolor = Colors.SUCCESS
+            self._state_label.value = t("connConnected")
+            self._state_label.color = Colors.SUCCESS
+            self._connect_btn.visible = False
+            self._disconnect_btn.visible = True
+            self._connect_btn.disabled = False
+            self._connect_btn.text = t("connConnect")
+        else:
+            self._state_dot.bgcolor = Colors.TEXT_DIM
+            self._state_label.value = t("connDisconnected")
+            self._state_label.color = Colors.TEXT_SECONDARY
+            self._connect_btn.visible = True
+            self._disconnect_btn.visible = False
+
+        self._state_dot.update()
+        self._state_label.update()
+        self._connect_btn.update()
+        self._disconnect_btn.update()
 
     # ── 拖拽调整宽度 ─────────────────────────────────────
 
