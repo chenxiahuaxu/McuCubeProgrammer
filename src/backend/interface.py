@@ -86,6 +86,11 @@ class TargetInfo:
     vendor: str
     """制造商，例如 "STMicroelectronics" 或 "GigaDevice"。"""
 
+    dap_idcode: str = ""
+    """DAP IDCODE，例如 "0x2ba01477"。"""
+
+    core_name: str = ""
+    """内核名称，例如 'Cortex-M4'。"""
     flash_regions: list[FlashRegion] = field(default_factory=list)
     """所有 Flash 区域列表。"""
 
