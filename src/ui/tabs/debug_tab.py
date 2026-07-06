@@ -66,7 +66,7 @@ class DebugTab:
                     ft.Text(t("debugElfTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
                     ft.Row(controls=[
                         ft.ElevatedButton(content=ft.Text(t("debugElfLoad"), size=Font.Size.CAPTION), icon=ft.Icons.FOLDER_OPEN, on_click=lambda _: self._pick_elf()),
-                        ft.Row(controls=[self._elf_path], scroll=ft.ScrollMode.AUTO, expand=True),
+                        ft.Container(content=self._elf_path, width=300),
                         self._elf_view_btn,
                     ], spacing=Spacing.SM),
                 ], spacing=Spacing.SM)),
@@ -91,7 +91,6 @@ class DebugTab:
                 card_container(content=ft.Column(controls=[
                     ft.Row(controls=[
                         ft.Text(t("debugRtosTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
-                        ft.Switch(value=False, label=t("debugAuto"), on_change=self._on_rtos_auto),
                         ft.ElevatedButton(content=ft.Text(t("debugRefresh"), size=Font.Size.CAPTION), icon=ft.Icons.REFRESH, on_click=lambda _: self._refresh_rtos()),
                     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                     self._rtos_column,
@@ -254,14 +253,18 @@ class DebugTab:
             add_log("ERROR", f"ELF 解析失败: {e}")
 
     def _show_symbols(self) -> None:
+        if not self._elf_symbols_data:
+            add_log("WARN", "符号表为空")
+            return
+        if not self._page:
+            add_log("WARN", "page 未设置")
+            return
         try:
-            if not self._page or not self._elf_symbols_data:
-                return
             rows: list[ft.Control] = []
             for s in self._elf_symbols_data[:200]:
                 rows.append(ft.Row(controls=[
-                    ft.Text(s["name"], width=180, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
-                    ft.Text(f"0x{s['addr']:08X}", width=110, size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY, font_family=Font.MONO),
+                    ft.Text(s["name"], width=200, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
+                    ft.Text(f"0x{s['addr']:08X}", width=120, size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY, font_family=Font.MONO),
                     ft.Text(str(s["size"]), width=60, size=Font.Size.CAPTION, color=Colors.TEXT_DIM),
                     ft.IconButton(icon=ft.Icons.ADD, icon_size=14, icon_color=Colors.ACCENT_PRIMARY,
                                   on_click=lambda e, a=s["addr"], n=s["name"], sz=s["size"]: self._watch_symbol(a, n, sz)),
@@ -325,9 +328,9 @@ class DebugTab:
             import traceback
             add_log("ERROR", f"RTOS 读取失败:\n{traceback.format_exc()}")
 
-    def _on_rtos_auto(self, e: ft.ControlEvent) -> None:
-        self._rtos_auto = e.control.value
-        if self._rtos_auto:
+        # 首次加载后启动自动刷新
+        if not self._rtos_auto:
+            self._rtos_auto = True
             self._loop.create_task(self._rtos_loop())
 
     async def _rtos_loop(self) -> None:
