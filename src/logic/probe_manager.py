@@ -54,7 +54,7 @@ class ProbeManager:
             if not raw:
                 add_log("WARN", "未检测到调试探针，请检查 USB 连接和驱动")
             return raw
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             add_log("ERROR", f"探针扫描失败: {e}")
             self._probes = []
             return []

@@ -159,7 +159,7 @@ class TargetSelector:
             return
         # 推断厂家
         vendor_key = "OTHER"
-        for k, label, p in _VENDORS:
+        for k, _, p in _VENDORS:
             if p and _match_vendor(name, p):
                 vendor_key = k
                 break

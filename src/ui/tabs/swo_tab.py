@@ -51,8 +51,10 @@ class SwoTab:
 
         return ft.Container(content=ft.Column(controls=[
             ft.Text("SWO 串行调试输出", size=Font.Size.HEADING, weight=500, color=Colors.TEXT_PRIMARY),
-            ft.Row(controls=[ft.Text("系统时钟:", size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY),
-                             self._sysclk, ft.Text("SWO:", size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY),
+            ft.Row(controls=[ft.Text("系统时钟:", size=Font.Size.CAPTION,
+                                     color=Colors.TEXT_SECONDARY),
+                             self._sysclk, ft.Text("SWO:", size=Font.Size.CAPTION,
+                                                   color=Colors.TEXT_SECONDARY),
                              self._baud, self._switch], spacing=Spacing.SM),
             standard_divider(), self.log_view.build()
         ], spacing=Spacing.SM, expand=True), padding=Spacing.XL, expand=True)
@@ -78,13 +80,14 @@ class SwoTab:
                 return
             p = self._probe_mgr.get_selected_probe()
             self.log_view.add_log("INFO", f"正在连接: {t}")
-            await asyncio.to_thread(self._backend.connect, t, p.unique_id if p else None, 1_000_000, None, swv)
+            await asyncio.to_thread(self._backend.connect, t,
+                                    p.unique_id if p else None, 1_000_000, None, swv)
             await asyncio.to_thread(self._backend.swo_start_callback,
                                     sysclk, swo_baud, self._on_swo_line)
             await asyncio.to_thread(self._backend.reset)
             self._active = True
             self.log_view.add_log("DONE", "SWO 已启动")
-        except Exception as ex:
+        except Exception as ex:  # pylint: disable=broad-exception-caught
             self.log_view.add_log("ERROR", f"SWO 启动失败: {ex}")
             self._switch_ref.current.value = False
             self._switch_ref.current.update()
@@ -102,8 +105,9 @@ class SwoTab:
         self._active = False
         try:
             await asyncio.to_thread(self._backend.swo_stop)
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             self.log_view.add_log("WARN", "SWO 停止时出现异常（可能已断开）")
 
     @property
-    def is_active(self) -> bool: return self._active
+    def is_active(self) -> bool:
+        return self._active

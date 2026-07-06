@@ -13,7 +13,7 @@ from collections.abc import Callable
 from datetime import datetime
 
 
-class LogEntry:
+class LogEntry:  # pylint: disable=too-few-public-methods
     """单条日志记录。"""
 
     def __init__(self, level: str, message: str) -> None:

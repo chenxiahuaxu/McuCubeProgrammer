@@ -112,7 +112,7 @@ class FlashController:
         self._cancelled: bool = False
         self._lock: threading.Lock = threading.Lock()
 
-    async def execute(
+    async def execute(  # pylint: disable=too-many-locals,too-many-statements  # OK: orchestration method
         self,
         task: FlashTask,
         on_progress: Callable[[FlashProgress], None] | None = None,
@@ -135,7 +135,10 @@ class FlashController:
 
         try:
             emit("connect", 0.00, "正在连接目标芯片...")
-            freq_str = f"{task.frequency/1_000_000:.2f} MHz" if task.frequency >= 1_000_000 else f"{task.frequency//1_000} kHz"
+            freq_str = (
+                f"{task.frequency/1_000_000:.2f} MHz" if task.frequency >= 1_000_000
+                else f"{task.frequency//1_000} kHz"
+            )
             add_log("INFO", f"连接目标: {task.target_name}  |  SWD 时钟: {freq_str}")
             await asyncio.to_thread(
                 self._backend.connect,
@@ -168,9 +171,13 @@ class FlashController:
                 for r in self._backend.get_target_info().flash_regions:
                     if r.start <= effective_base < r.start + r.length:
                         sector_size = r.sector_size
-                        add_log("INFO", f"Flash: {r.length//1024} KB ({r.name}), 扇区 {r.sector_size//1024} KB")
+                        add_log(
+                            "INFO",
+                            f"Flash: {r.length//1024} KB ({r.name}), "
+                            f"扇区 {r.sector_size//1024} KB",
+                        )
                         break
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
                 sector_size = 16 * 1024  # fallback
             if sector_size == 0:
                 sector_size = 16 * 1024
@@ -180,10 +187,18 @@ class FlashController:
 
             addr_range = f"0x{effective_base:08X}-0x{effective_end:08X}"
             if is_addressed:
-                add_log("INFO", f"固件: {fw_size:,} 字节 ({fw_size/1024:.1f} KB), 地址 {addr_range}（从文件解析）")
+                add_log(
+                    "INFO",
+                    f"固件: {fw_size:,} 字节 ({fw_size/1024:.1f} KB), "
+                    f"地址 {addr_range}（从文件解析）",
+                )
             else:
                 add_log("INFO", f"固件: {fw_size:,} 字节 ({fw_size/1024:.1f} KB), 地址 {addr_range}")
-            add_log("INFO", f"擦除扇区 {start_sector}-{end_sector} ({sector_count}个, 各{sector_size//1024}KB)")
+            add_log(
+                "INFO",
+                f"擦除扇区 {start_sector}-{end_sector} "
+                f"({sector_count}个, 各{sector_size//1024}KB)",
+            )
 
             if task.erase_chip:
                 emit("erase", 0.05, "正在擦除 Flash...")
@@ -203,7 +218,11 @@ class FlashController:
             )
             check_cancel()
             emit("program", 0.90, "固件烧录完成")
-            add_log("DONE", f"烧录完成: 扇区 {start_sector}-{end_sector}，地址 0x{effective_base:08X}-0x{effective_end:08X}")
+            add_log(
+                "DONE",
+                f"烧录完成: 扇区 {start_sector}-{end_sector}，"
+                f"地址 0x{effective_base:08X}-0x{effective_end:08X}",
+            )
 
             emit("verify", 0.90, "正在验证...")
             add_log("INFO", "正在验证 Flash...")
@@ -240,7 +259,7 @@ class FlashController:
                 message=str(e), duration_seconds=duration,
             )
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             duration = time.time() - t_start
             msg: str = f"未知错误: {e}"
             emit("error", 0.0, msg)
@@ -283,7 +302,7 @@ class FlashController:
                 addrs = ih.addresses()
                 if addrs:
                     return min(addrs), max(addrs) + 1
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 _log.getLogger(__name__).warning("IntelHex 解析失败: %s", e)
         elif ext in (".elf", ".axf"):
             try:
@@ -300,6 +319,6 @@ class FlashController:
                             hi = max(hi, vaddr + fsize) if hi is not None else vaddr + fsize
                     if lo is not None and hi is not None:
                         return lo, hi
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 _log.getLogger(__name__).warning("ELF 解析失败: %s", e)
         return 0, 0

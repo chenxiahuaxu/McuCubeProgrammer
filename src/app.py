@@ -15,7 +15,7 @@ from src.ui.theme import APP_TITLE, APP_VERSION, create_dark_theme
 from src.utils.logger import add_log, Logger as _Logger
 
 
-class App:
+class App:  # pylint: disable=too-few-public-methods
     """MCU Cube Programmer 应用主类。"""
 
     is_web: bool = False
@@ -49,7 +49,8 @@ class App:
         # 启动日志写入 UI LogView
         add_log("INFO", "=" * 40)
         add_log("INFO", f"MCU Cube Programmer v{APP_VERSION} 已启动")
-        add_log("INFO", f"平台: {App.platform_name} | pyOCD: {'可用' if App.pyocd_available else '不可用'}")
+        add_log("INFO", f"平台: {App.platform_name}"
+                f" | pyOCD: {'可用' if App.pyocd_available else '不可用'}")
 
         # ── 启动时自动扫描探针（延迟确保UI就绪） ──
         asyncio.ensure_future(self._delayed_scan())
@@ -118,12 +119,12 @@ class App:
                 self.target_manager = TargetManager(backend)
                 self.flash_controller = FlashController(backend)
                 add_log("INFO", "pyOCD 后端已初始化")
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught  # OK: top-level init fallback
                 add_log("ERROR", f"pyOCD 后端初始化失败: {e}")
                 if self._backend:
                     try:
                         self._backend.disconnect()
-                    except Exception:
+                    except Exception:  # pylint: disable=broad-exception-caught  # OK: top-level init fallback
                         pass
                     self._backend = None
 

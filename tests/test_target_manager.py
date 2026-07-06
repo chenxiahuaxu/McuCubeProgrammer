@@ -94,9 +94,11 @@ class TestPackTargets:
         assert result == []
 
 
-class TestAllTargets:
+class TestAllTargets:  # pylint: disable=too-few-public-methods,invalid-name
     def test_search_targets_filters(self, target_mgr):
-        TARGETS_OUTPUT = "  stm32f103rc STM32F103RC\n  stm32f407vg STM32F407VG\n  nrf52840 nRF52840\n"
+        TARGETS_OUTPUT = (
+            "  stm32f103rc STM32F103RC\n  stm32f407vg STM32F407VG\n  nrf52840 nRF52840\n"
+        )
         mock = MagicMock()
         mock.returncode = 0
         mock.stdout = TARGETS_OUTPUT

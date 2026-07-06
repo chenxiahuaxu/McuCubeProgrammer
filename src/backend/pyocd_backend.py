@@ -53,12 +53,11 @@ def _infer_probe_type(probe: debug_probe.DebugProbe) -> str:
     class_name: str = type(probe).__name__.lower()
     if "stlink" in class_name:
         return "stlink"
-    elif "cmsisdap" in class_name or "dap" in class_name:
+    if "cmsisdap" in class_name or "dap" in class_name:
         return "cmsisdap"
-    elif "jlink" in class_name:
+    if "jlink" in class_name:
         return "jlink"
-    else:
-        return "unknown"
+    return "unknown"
 
 
 def _probe_to_probe_info(probe: debug_probe.DebugProbe) -> ProbeInfo:
@@ -153,7 +152,7 @@ class PyOCDBackend(BackendABC):
 
     # ── 连接与断开 ───────────────────────────────────────
 
-    def connect(
+    def connect(  # pylint: disable=too-many-positional-arguments
         self,
         target: str,
         probe_uid: str | None = None,
@@ -235,7 +234,7 @@ class PyOCDBackend(BackendABC):
         if self._session is not None:
             try:
                 self._session.close()
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
                 _log.warning("Session close failed (device may have been unplugged)", exc_info=True)
             finally:
                 self._session = None
@@ -330,10 +329,9 @@ class PyOCDBackend(BackendABC):
                     return False
 
                 return file_data == bytes(target_data)
-            else:
-                # .hex/.elf 多段验证在后续版本实现
-                _log.warning("非 .bin 文件的 verify 尚未实现完整逐段比对，当前直接返回 True")
-                return True
+            # .hex/.elf 多段验证在后续版本实现
+            _log.warning("非 .bin 文件的 verify 尚未实现完整逐段比对，当前直接返回 True")
+            return True
 
         except pyocd_exc.Error as e:
             raise BackendError(ErrorCode.VERIFY_FAILED, str(e)) from e
@@ -378,7 +376,7 @@ class PyOCDBackend(BackendABC):
         if self._swv_reader:
             try:
                 self._swv_reader._shutdown_event.set()
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
                 _log.warning("SWV reader shutdown failed", exc_info=True)
             self._swv_reader = None
         self._swv_raw_port = 0

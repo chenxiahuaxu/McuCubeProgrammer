@@ -11,7 +11,7 @@ from src.logic.probe_manager import ProbeManager
 from src.ui.theme import Colors, Font, Spacing
 
 
-class ProbeTab:
+class ProbeTab:  # pylint: disable=too-few-public-methods
     """探针标签页。
 
     以卡片形式展示每个已连接探针的名称、UID、类型、厂家等信息。

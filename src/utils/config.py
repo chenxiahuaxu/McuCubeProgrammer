@@ -52,7 +52,7 @@ def get(key: str, default=None):
     return load().get(key, default)
 
 
-def set(key: str, value) -> None:
+def set_value(key: str, value) -> None:
     d = load()
     d[key] = value
     save(d)

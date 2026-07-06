@@ -17,7 +17,7 @@ APP_VERSION: str = "0.0.1"
 # 参考: PCB 阻焊层绿 + 铜箔走线金 + 示波器深色屏幕
 
 
-class Colors:
+class Colors:  # pylint: disable=too-few-public-methods
     """所有 UI 颜色统一从此处引用。
 
     设计参考:
@@ -66,7 +66,7 @@ class Colors:
 # 以 4px 为基础栅格单位
 
 
-class Spacing:
+class Spacing:  # pylint: disable=too-few-public-methods
     XS = 4
     SM = 8
     MD = 12
@@ -78,10 +78,10 @@ class Spacing:
 # ── 字体常量 ───────────────────────────────────────────────
 
 
-class Font:
+class Font:  # pylint: disable=too-few-public-methods
     MONO = "Cascadia Code, JetBrains Mono, Consolas, monospace"
 
-    class Size:
+    class Size:  # pylint: disable=too-few-public-methods
         TITLE = 18
         HEADING = 15
         BODY = 14

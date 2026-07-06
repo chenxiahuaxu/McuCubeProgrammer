@@ -39,7 +39,7 @@ try:
         else:
             try:
                 path.seek(0)
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught  # OK: top-level error handler
                 pass
             raw = path.read()
         # 跳过 BOM 或前置垃圾字节，找到 XML 声明
@@ -49,7 +49,7 @@ try:
         return _svd_parser.SVDParser(ET.parse(io.BytesIO(raw)), remove_reserved)
 
     _svd_parser.SVDParser.for_xml_file = staticmethod(_patched_for_xml_file)
-except Exception:
+except Exception:  # pylint: disable=broad-exception-caught  # OK: top-level error handler
     pass
 
 DEFAULT_WEB_PORT = 8550
@@ -63,7 +63,8 @@ def main(page: ft.Page) -> None:
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="MCU Cube Programmer — 跨平台 MCU 烧录工具")
     parser.add_argument("--web", action="store_true", help="以 Web 模式启动")
-    parser.add_argument("-p", "--port", type=int, default=DEFAULT_WEB_PORT, help=f"Web 端口（默认 {DEFAULT_WEB_PORT}）")
+    parser.add_argument("-p", "--port", type=int, default=DEFAULT_WEB_PORT,
+                        help=f"Web 端口（默认 {DEFAULT_WEB_PORT}）")
     return parser.parse_args()
 
 
@@ -71,8 +72,8 @@ if __name__ == "__main__":
     args = _parse_args()
 
     if args.web:
-        url = f"http://localhost:{args.port}"
-        add_log("INFO", f"[Web] 服务已启动 → {url}")
+        APP_URL = f"http://localhost:{args.port}"
+        add_log("INFO", f"[Web] 服务已启动 → {APP_URL}")
         add_log("INFO", "请勿关闭此窗口，关闭将停止服务")
         ft.run(main, view=ft.AppView.WEB_BROWSER, port=args.port)
     else:

@@ -19,7 +19,7 @@ from src.ui.theme import (
 from src.utils.config import load as cfg_load, save as cfg_save
 
 
-class SettingsTab:
+class SettingsTab:  # pylint: disable=too-few-public-methods
     """设置标签页。
 
     提供深色模式开关和应用关于信息展示。
@@ -187,5 +187,4 @@ class SettingsTab:
     def _format_frequency(hz: int) -> str:
         if hz >= 1_000_000:
             return f"当前: {hz / 1_000_000:.2f} MHz"
-        else:
-            return f"当前: {hz // 1_000} kHz"
+        return f"当前: {hz // 1_000} kHz"

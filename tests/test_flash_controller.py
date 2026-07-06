@@ -138,7 +138,7 @@ class TestRunningState:
         assert controller.is_running() is False
 
 
-class TestCancel:
+class TestCancel:  # pylint: disable=too-few-public-methods
     @pytest.mark.asyncio
     async def test_cancel_stops_execution(self, controller, sample_task, mock_backend):
         """取消操作应立即使 execute 返回失败结果。"""

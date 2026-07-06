@@ -58,7 +58,7 @@ class TestGetProbes:
         assert pm.get_probe_count() == 0
 
 
-class TestRefresh:
+class TestRefresh:  # pylint: disable=too-few-public-methods
     def test_refresh_rescans(self, mock_backend, fake_probe_info):
         pm = ProbeManager(mock_backend)
         pm.scan_probes()

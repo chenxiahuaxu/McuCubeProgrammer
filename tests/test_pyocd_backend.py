@@ -211,7 +211,7 @@ class TestProgram:
             mock_fp = MagicMock()
             mock_fp_cls.return_value = mock_fp
             connected_backend.program(str(f))
-            args, kwargs = mock_fp_cls.call_args
+            _, kwargs = mock_fp_cls.call_args
             assert "progress" in kwargs
 
 
@@ -227,7 +227,9 @@ class TestVerify:
     def test_verify_bin_mismatch_returns_false(self, connected_backend, tmp_path):
         f = tmp_path / "fw.bin"
         f.write_bytes(b"\x01\x02\x03\x04")
-        connected_backend._session.target.read_memory_block8.return_value = bytearray(b"\xFF\xFF\xFF\xFF")
+        connected_backend._session.target.read_memory_block8.return_value = (
+            bytearray(b"\xFF\xFF\xFF\xFF")
+        )
         result = connected_backend.verify(str(f))
         assert result is False
 
@@ -274,7 +276,7 @@ class TestIsConnected:
         assert connected_backend.is_connected is False
 
 
-class TestGetTargetInfo:
+class TestGetTargetInfo:  # pylint: disable=too-few-public-methods
     def test_get_target_info_returns_info(self, connected_backend):
         info = connected_backend.get_target_info()
         assert isinstance(info, TargetInfo)

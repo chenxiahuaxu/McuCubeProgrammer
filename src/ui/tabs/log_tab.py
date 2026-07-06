@@ -11,7 +11,7 @@ from src.ui.components.log_view import LogView
 from src.ui.theme import Colors, Font, Spacing, standard_divider
 
 
-class LogTab:
+class LogTab:  # pylint: disable=too-few-public-methods
     """日志标签页。
 
     全屏展示日志视图，提供清除和导出功能。
@@ -71,9 +71,9 @@ class LogTab:
         import tempfile
         text = self.log_view.export()
         # 保存到临时文件
-        path = tempfile.NamedTemporaryFile(
-            mode="w", suffix=".log", delete=False, encoding="utf-8"
-        ).name
+        with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".log", delete=False, encoding="utf-8") as _tmp:
+            path = _tmp.name
         with open(path, "w", encoding="utf-8") as f:
             f.write(text)
         # 复制到剪贴板

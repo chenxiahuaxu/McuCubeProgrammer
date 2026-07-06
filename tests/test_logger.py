@@ -89,7 +89,7 @@ class TestLoggerSingleton:
             try:
                 for i in range(200):
                     logger.add("INFO", f"t{thread_id}_m{i}")
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught  # OK: test cleanup
                 errors.append(str(e))
 
         threads = [threading.Thread(target=worker, args=(i,)) for i in range(5)]
@@ -98,13 +98,13 @@ class TestLoggerSingleton:
         for t in threads:
             t.join()
 
-        assert errors == []
+        assert not errors
         entries = logger.get_all()
         assert len(entries) > 0
         assert len(entries) <= 1000
 
 
-class TestAddLogFunction:
+class TestAddLogFunction:  # pylint: disable=too-few-public-methods
     def test_add_log_uses_singleton(self):
         logger = Logger()
         logger.clear()

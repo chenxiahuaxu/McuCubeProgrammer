@@ -46,7 +46,7 @@ class TargetManager:
         try:
             result = subprocess.run(
                 ["pyocd", "list", "--targets"],
-                capture_output=True, text=True, timeout=15,
+                capture_output=True, text=True, timeout=15, check=False,
             )
             if result.returncode != 0:
                 raise RuntimeError(result.stderr.strip() or "pyOCD returned non-zero")
@@ -63,7 +63,7 @@ class TargetManager:
             add_log("INFO", f"内置目标: {len(targets)} 个")
             return sorted(targets)
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             add_log("WARN", f"无法获取内置目标列表，使用内置备用列表: {e}")
             return [(t, t) for t in self.FALLBACK_TARGETS]
 
@@ -85,7 +85,7 @@ class TargetManager:
         try:
             result = subprocess.run(
                 ["pyocd", "pack", "show"],
-                capture_output=True, text=True, timeout=15,
+                capture_output=True, text=True, timeout=15, check=False,
             )
             if result.returncode != 0:
                 return []
@@ -99,14 +99,14 @@ class TargetManager:
 
             return sorted(targets)
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             add_log("WARN", f"无法获取 Pack 目标列表: {e}")
             return []
 
     def list_all_targets(self) -> list[tuple[str, str]]:
         """获取所有可用目标（内置 + Pack），去重后按名称排序。"""
-        builtin = {k: v for k, v in self.list_builtin_targets()}
-        packs = {k: v for k, v in self.list_installed_pack_targets()}
+        builtin = dict(self.list_builtin_targets())
+        packs = dict(self.list_installed_pack_targets())
         merged = {**builtin, **packs}
         return sorted(merged.items(), key=lambda x: x[0])
 
@@ -129,17 +129,16 @@ class TargetManager:
             add_log("INFO", f"正在安装 Pack: {pack_path}")
             result = subprocess.run(
                 ["pyocd", "pack", "install", pack_path],
-                capture_output=True, text=True, timeout=60,
+                capture_output=True, text=True, timeout=60, check=False,
             )
             if result.returncode == 0:
                 pack_name = pack_path.replace("\\", "/").split("/")[-1]
                 self._installed_packs.append(pack_name)
                 add_log("DONE", f"Pack 安装成功: {pack_name}")
                 return True
-            else:
-                add_log("ERROR", f"Pack 安装失败: {result.stderr.strip()}")
-                return False
-        except Exception as e:
+            add_log("ERROR", f"Pack 安装失败: {result.stderr.strip()}")
+            return False
+        except Exception as e:  # pylint: disable=broad-exception-caught
             add_log("ERROR", f"Pack 安装异常: {e}")
             return False
 
@@ -156,15 +155,14 @@ class TargetManager:
             add_log("INFO", f"正在安装 Pack: {pack_name}")
             result = subprocess.run(
                 ["pyocd", "pack", "install", pack_name],
-                capture_output=True, text=True, timeout=60,
+                capture_output=True, text=True, timeout=60, check=False,
             )
             if result.returncode == 0:
                 self._installed_packs.append(pack_name)
                 add_log("DONE", f"Pack 安装成功: {pack_name}")
                 return True
-            else:
-                add_log("ERROR", f"Pack 安装失败: {result.stderr.strip()}")
-                return False
-        except Exception as e:
+            add_log("ERROR", f"Pack 安装失败: {result.stderr.strip()}")
+            return False
+        except Exception as e:  # pylint: disable=broad-exception-caught
             add_log("ERROR", f"Pack 安装异常: {e}")
             return False

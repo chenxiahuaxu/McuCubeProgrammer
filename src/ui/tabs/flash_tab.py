@@ -40,6 +40,7 @@ class FlashTab:
         target_manager: TargetManager,
         flash_controller: FlashController,
         log_view: LogView,
+        *,
         loop: asyncio.AbstractEventLoop,
     ) -> None:
         self.page = page
@@ -58,7 +59,7 @@ class FlashTab:
 
         # ── 子组件 ──
         self.probe_selector = ProbeSelector(
-            on_refresh=lambda: probe_manager.scan_probes(),
+            on_refresh=probe_manager.scan_probes,
             on_probe_selected=self._on_probe_selected,
         )
         self.target_selector = TargetSelector(
@@ -224,7 +225,7 @@ class FlashTab:
     def _stop_swo(self) -> None:
         try:
             self.flash_controller._backend.swo_stop()
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught  # OK: UI error handler
             pass
 
     def _on_cancel_click(self) -> None:
@@ -238,7 +239,7 @@ class FlashTab:
             await asyncio.to_thread(self.flash_controller._backend.erase_chip)
             self.log_view.add_log("DONE", "Flash 擦除完成")
             self.flash_panel.set_status("擦除完成", is_error=False)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught  # OK: UI error handler
             self.log_view.add_log("ERROR", f"擦除失败: {e}")
             self.flash_panel.set_status(str(e), is_error=True)
         finally:
