@@ -19,8 +19,6 @@
   <img src="https://img.shields.io/github/repo-size/chenxiahuaxu/McuCubeProgrammer?style=flat-square" alt="Repo Size">
 </p>
 
-> **当前版本：v0.1.0**
-
 ---
 
 ## 什么时候需要它？
