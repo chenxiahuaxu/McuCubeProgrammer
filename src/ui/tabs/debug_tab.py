@@ -1,4 +1,4 @@
-"""调试标签页 — 目标控制 + 变量监控 + 内存图表 + RTOS。"""
+"""调试标签页 — 目标控制 + 变量监控 + RTOS 线程。"""
 
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ from src.ui.theme import Colors, Font, Spacing, card_container, standard_divider
 from src.utils.elf_parser import parse_elf_symbols
 from src.utils.logger import add_log
 
-_LINE_COLORS = [Colors.ACCENT_PRIMARY, Colors.ACCENT_COPPER, Colors.INFO, Colors.WARNING, Colors.SUCCESS]
 _HISTORY_MAX = 60
 
 
@@ -36,8 +35,7 @@ class DebugTab:
         self._elf_full_path: str = ""
         self._elf_view_btn: ft.ElevatedButton | None = None
         self._elf_symbols_data: list[dict] = []
-        self._chart_canvas: ft.Column | None = None
-        self._sample_count: int = 0
+        # chart canvas removed — trend shown via dialog per watch
         self._rtos_column: ft.Column | None = None
         self._rtos_auto: bool = False
 
@@ -53,7 +51,7 @@ class DebugTab:
         self._add_name = ft.TextField(hint_text=t("debugWatchName"), width=100, text_size=12)
         add_btn = ft.ElevatedButton(content=ft.Text(t("debugWatchAdd"), size=Font.Size.CAPTION), icon=ft.Icons.ADD, on_click=lambda _: self._add_watch())
         self._watch_column = ft.Column(spacing=Spacing.XS)
-        self._chart_canvas = ft.Column(spacing=Spacing.XS)
+        # trend chart is built per-watch in dialog
         self._elf_path = ft.Text("", size=Font.Size.CAPTION, color=Colors.TEXT_DIM, no_wrap=True, tooltip="")
         self._elf_view_btn = ft.ElevatedButton(content=ft.Text(t("debugElfView")), icon=ft.Icons.LIST, disabled=True, on_click=lambda _: self._show_symbols())
         self._elf_symbols_data: list[dict] = []
@@ -83,12 +81,7 @@ class DebugTab:
                     ft.Row(controls=[self._add_name, self._add_addr, self._add_size, add_btn], spacing=Spacing.SM),
                     self._watch_column,
                 ], spacing=Spacing.SM)),
-                # 4. 内存趋势
-                card_container(content=ft.Column(controls=[
-                    ft.Text(t("debugChartTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
-                    self._chart_canvas,
-                ], spacing=Spacing.SM)),
-                # 5. RTOS
+                # 4. RTOS
                 card_container(content=ft.Column(controls=[
                     ft.Row(controls=[
                         ft.Text(t("debugRtosTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
@@ -162,17 +155,19 @@ class DebugTab:
         self._watch_column.controls.append(hdr)
         self._watch_column.controls.append(standard_divider())
         for w in self._watches:
+            name = w["name"]
             self._watch_column.controls.append(ft.Row(controls=[
-                ft.Text(w["name"], width=100, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
+                ft.Text(name, width=100, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
                 ft.Text(f"0x{w['addr']:08X}", width=110, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
                 ft.Text(w.get("value", "—"), size=Font.Size.CAPTION, color=Colors.ACCENT_PRIMARY, font_family=Font.MONO),
+                ft.IconButton(icon=ft.Icons.BAR_CHART, icon_size=14, icon_color=Colors.ACCENT_COPPER,
+                              on_click=lambda e, n=name: self._show_trend(n)),
             ], spacing=Spacing.SM))
         self._watch_column.update()
 
     def _clear_watches(self) -> None:
-        self._watches.clear(); self._sample_count = 0
+        self._watches.clear()
         self._rebuild_watch_list()
-        self._chart_canvas.controls.clear(); self._chart_canvas.update()
 
     async def _watch_loop(self) -> None:
         while self._watch_running and self._watches:
@@ -196,39 +191,53 @@ class DebugTab:
                         w["val_num"] = 0
                 except Exception:
                     w["value"] = "err"; w["val_num"] = None
-            self._sample_count += 1
+            # 记录历史（用于趋势弹窗）
+            for w in self._watches:
+                if not w.get("history"):
+                    w["history"] = []
+                v = w.get("val_num")
+                if v is not None:
+                    w["history"].append(v)
+                if len(w["history"]) > _HISTORY_MAX:
+                    w["history"] = w["history"][-_HISTORY_MAX:]
             self._rebuild_watch_list()
-            self._update_chart()
             await asyncio.sleep(1)
 
-    def _update_chart(self) -> None:
-        for w in self._watches:
-            if not w.get("history"):
-                w["history"] = []
-            v = w.get("val_num")
-            if v is not None:
-                w["history"].append(v)
-            if len(w["history"]) > _HISTORY_MAX:
-                w["history"] = w["history"][-_HISTORY_MAX:]
+    def _show_trend(self, name: str) -> None:
+        """弹出指定变量的趋势图表对话框。"""
+        watch = next((w for w in self._watches if w["name"] == name), None)
+        if not watch:
+            return
+        hist = watch.get("history", [])
+        vals = [v for v in hist if isinstance(v, (int, float))]
+        if not vals:
+            add_log("WARN", f"{name} 暂无历史数据")
+            return
 
-        self._chart_canvas.controls.clear()
-        for i, watch in enumerate(self._watches):
-            hist = watch.get("history", [])
-            vals = [v for v in hist if isinstance(v, (int, float))]
-            if not vals: continue
-            color = _LINE_COLORS[i % len(_LINE_COLORS)]
-            # 趋势摘要
-            label = f"{watch['name']}: min={min(vals)}  max={max(vals)}  cur={vals[-1]}"
-            self._chart_canvas.controls.append(ft.Text(label, size=Font.Size.CAPTION, color=color, font_family=Font.MONO))
-            # 条形趋势图
-            bars = ft.Row(spacing=1)
-            vmax = max(vals); vmin = min(vals)
-            if vmax == vmin: vmax += 1
-            for v in vals[-40:]:
-                h = max(2, int((v - vmin) / (vmax - vmin) * 20))
-                bars.controls.append(ft.Container(width=4, height=h, bgcolor=color, border_radius=1))
-            self._chart_canvas.controls.append(bars)
-        self._chart_canvas.update()
+        color = Colors.ACCENT_COPPER
+        label = f"{name}:  min={min(vals)}  max={max(vals)}  cur={vals[-1]}"
+        bars = ft.Row(spacing=1, wrap=True)
+        vmax = max(vals); vmin = min(vals)
+        if vmax == vmin:
+            vmax += 1
+        for v in vals[-60:]:
+            h = max(2, int((v - vmin) / (vmax - vmin) * 24))
+            bars.controls.append(ft.Container(width=5, height=h, bgcolor=color, border_radius=1.5))
+
+        content_col = ft.Column(controls=[
+            ft.Text(label, size=Font.Size.CAPTION, color=color, font_family=Font.MONO),
+            ft.Divider(height=8),
+            bars,
+        ], spacing=Spacing.SM, scroll=ft.ScrollMode.AUTO, width=500, height=300)
+
+        dlg = ft.AlertDialog(
+            modal=True,
+            open=True,
+            title=ft.Text(f"Trend — {name}"),
+            content=content_col,
+            actions=[ft.ElevatedButton(content=ft.Text("Close"), on_click=lambda _: self._close_dialog(dlg))],
+        )
+        self._page.show_dialog(dlg)
 
     # ── ELF 符号加载 ─────────────────────────────────────
     def _pick_elf(self) -> None:
