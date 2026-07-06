@@ -87,7 +87,7 @@ class App:  # pylint: disable=too-few-public-methods
     # ── 窗口配置 ──────────────────────────────────────────
 
     def _configure_window(self) -> None:
-        self.page.title = f"{APP_TITLE} v{APP_VERSION}"
+        self.page.title = APP_TITLE
         if App.is_desktop:
             self.page.window.width = 1024
             self.page.window.height = 768
@@ -189,6 +189,7 @@ class App:  # pylint: disable=too-few-public-methods
                     target_manager=self.target_manager,
                     on_resize=self._on_panel_resize,
                 )
+            from src.ui.tabs.about_tab import AboutTab
             from src.ui.tabs.flash_tab import FlashTab
             from src.ui.tabs.log_tab import LogTab
             from src.ui.tabs.settings_tab import SettingsTab
@@ -209,6 +210,7 @@ class App:  # pylint: disable=too-few-public-methods
             )
             log_tab = LogTab(log_view=self.log_view, page=self.page)
             settings_tab = SettingsTab(page=self.page)
+            about_tab = AboutTab()
 
             from src.ui.panels.connection_panel import PANEL_WIDTH
 
@@ -233,6 +235,7 @@ class App:  # pylint: disable=too-few-public-methods
                         self.swo_tab.build(),
                         log_tab.build(),
                         settings_tab.build(),
+                        about_tab.build(),
                     ]),
                     expand=True,
                 )
@@ -257,12 +260,14 @@ class App:  # pylint: disable=too-few-public-methods
             t("tabSwo"),
             t("tabLog"),
             t("tabSettings"),
+            t("tabAbout"),
         ]
         tab_icons = [
             ft.Icons.FLASH_ON,
             ft.Icons.TERMINAL,
             ft.Icons.LIST_ALT,
             ft.Icons.SETTINGS,
+            ft.Icons.INFO,
         ]
         length = len(tab_labels)
 
