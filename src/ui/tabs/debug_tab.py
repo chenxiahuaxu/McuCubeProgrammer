@@ -31,7 +31,7 @@ class DebugTab:
         self._add_addr: ft.TextField | None = None
         self._add_size: ft.Dropdown | None = None
         self._add_name: ft.TextField | None = None
-        self._elf_path: ft.TextField | None = None
+        self._elf_path: ft.Text | None = None
         self._elf_symbols: ft.Column | None = None
 
     def build(self) -> ft.Control:
@@ -49,7 +49,7 @@ class DebugTab:
         self._add_name = ft.TextField(hint_text=t("debugWatchName"), width=100, text_size=12)
         add_btn = ft.ElevatedButton(content=ft.Text(t("debugWatchAdd"), size=Font.Size.CAPTION), icon=ft.Icons.ADD, on_click=lambda _: self._add_watch())
         self._watch_column = ft.Column(spacing=Spacing.XS)
-        self._elf_path = ft.TextField(hint_text="firmware.elf", expand=True, text_size=12)
+        self._elf_path = ft.Text("", size=Font.Size.CAPTION, color=Colors.TEXT_DIM)
         self._elf_symbols = ft.Column(spacing=Spacing.XS)
 
         return ft.ListView(
@@ -67,9 +67,8 @@ class DebugTab:
                 card_container(content=ft.Column(controls=[
                     ft.Text(t("debugElfTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
                     ft.Row(controls=[
+                        ft.ElevatedButton(content=ft.Text(t("debugElfLoad"), size=Font.Size.CAPTION), icon=ft.Icons.FOLDER_OPEN, on_click=lambda _: self._pick_elf()),
                         self._elf_path,
-                        ft.ElevatedButton(content=ft.Text("...", size=Font.Size.CAPTION), on_click=lambda _: self._pick_elf()),
-                        ft.ElevatedButton(content=ft.Text(t("debugElfLoad"), size=Font.Size.CAPTION), icon=ft.Icons.FOLDER_OPEN, on_click=lambda _: self._load_elf()),
                     ], spacing=Spacing.SM),
                     self._elf_symbols,
                 ], spacing=Spacing.SM)),
@@ -187,12 +186,14 @@ class DebugTab:
             allowed_extensions=["elf", "axf"],
         )
         if files and files[0].path:
-            self._elf_path.value = files[0].path
+            path = files[0].path
+            self._elf_path.value = path
             self._elf_path.update()
+            self._load_elf(path)
 
-    def _load_elf(self) -> None:
-        path = self._elf_path.value.strip()
+    def _load_elf(self, path: str) -> None:
         if not path:
+            return
             return
         try:
             symbols = parse_elf_symbols(path)
