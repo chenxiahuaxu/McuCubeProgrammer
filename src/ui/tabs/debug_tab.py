@@ -53,7 +53,7 @@ class DebugTab:
         self._watch_column = ft.Column(spacing=Spacing.XS)
         self._chart_canvas = ft.Column(spacing=Spacing.XS)
         self._elf_path = ft.Text("", size=Font.Size.CAPTION, color=Colors.TEXT_DIM)
-        self._elf_view_btn = ft.TextButton(text=t("debugElfView"), icon=ft.Icons.LIST, visible=False, on_click=lambda _: self._show_symbols())
+        self._elf_view_btn = ft.TextButton(content=ft.Text(t("debugElfView")), icon=ft.Icons.LIST, visible=False, on_click=lambda _: self._show_symbols())
         self._elf_symbols_data: list[dict] = []
         self._rtos_column = ft.Column(spacing=Spacing.XS)
 
