@@ -199,11 +199,12 @@ class App:  # pylint: disable=too-few-public-methods
             log_tab = LogTab(log_view=self.log_view, page=self.page)
             settings_tab = SettingsTab(page=self.page)
 
+            from src.ui.panels.connection_panel import PANEL_WIDTH
+
             self.page.add(
-                ft.Row(
+                ft.Stack(
                     controls=[
                         self.connection_panel.build(),
-                        ft.VerticalDivider(width=1, color=Colors.DIVIDER),
                         ft.Container(
                             content=self._build_tabs([
                                 self.flash_tab.build(),
@@ -211,11 +212,13 @@ class App:  # pylint: disable=too-few-public-methods
                                 log_tab.build(),
                                 settings_tab.build(),
                             ]),
-                            expand=True,
+                            left=PANEL_WIDTH,
+                            right=0,
+                            top=0,
+                            bottom=0,
                         ),
                     ],
                     expand=True,
-                    spacing=0,
                 )
             )
         else:
