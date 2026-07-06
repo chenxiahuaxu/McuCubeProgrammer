@@ -476,6 +476,39 @@ class PyOCDBackend(BackendABC):
                 f"读取内存失败 (0x{address:08X}, {size} bytes): {e}",
             ) from e
 
+    def get_rtos_threads(self) -> list[dict]:
+        session = self._require_session()
+        try:
+            from pyocd.rtos.freertos import FreeRTOSThreadProvider
+            provider = FreeRTOSThreadProvider(session.target)
+            threads = provider.get_threads()
+            result = []
+            for t in threads:
+                desc: str = getattr(t, "description", "") or ""
+                # 从 description 解析优先级和状态
+                priority = ""
+                state = ""
+                stack_usage = ""
+                for part in desc.split(";"):
+                    part = part.strip()
+                    if "Priority" in part:
+                        priority = part.split(":")[-1].strip()
+                    elif "State" in part:
+                        state = part.split(":")[-1].strip()
+                    elif "Stack" in part:
+                        stack_usage = part.split(":")[-1].strip()
+                result.append({
+                    "name": t.name,
+                    "priority": priority,
+                    "state": state,
+                    "stack_usage": stack_usage,
+                    "is_current": t.is_current,
+                    "unique_id": t.unique_id,
+                })
+            return result
+        except Exception:
+            return []
+
     # ── SWO ─────────────────────────────────────────────
 
     def swo_start(self, baudrate: float = 1_000_000) -> None:

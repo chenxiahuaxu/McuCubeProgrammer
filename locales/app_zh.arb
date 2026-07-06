@@ -124,5 +124,9 @@
   "debugWatchAdd": "监控",
   "debugWatchValue": "当前值",
   "debugElfTitle": "ELF 符号表",
-  "debugElfLoad": "加载"
+  "debugElfLoad": "加载",
+  "debugChartTitle": "内存趋势",
+  "debugRtosTitle": "RTOS 任务",
+  "debugRtosNone": "未检测到 RTOS",
+  "debugRefresh": "刷新"
 }
