@@ -11,7 +11,6 @@
   "chipRefresh": "Refresh",
   "chipNotConnected": "No target connected. Use the Connect button in the sidebar.",
   "chipReadError": "Failed to read chip information.",
-  "chipDevice": "Device",
   "chipPartNumber": "Part Number",
   "chipVendor": "Vendor",
   "chipDapIdcode": "DAP IDCODE",

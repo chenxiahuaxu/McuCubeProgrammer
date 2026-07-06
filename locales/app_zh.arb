@@ -12,7 +12,6 @@
   "chipRefresh": "刷新",
   "chipNotConnected": "未连接目标设备，请点击侧边栏的「连接」按钮。",
   "chipReadError": "读取芯片信息失败。",
-  "chipDevice": "设备型号",
   "chipPartNumber": "完整料号",
   "chipVendor": "制造商",
   "chipDapIdcode": "DAP IDCODE",
