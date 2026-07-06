@@ -91,7 +91,7 @@ class DebugTab:
                 card_container(content=ft.Column(controls=[
                     ft.Row(controls=[
                         ft.Text(t("debugRtosTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
-                        ft.Switch(value=False, label=t("debugAuto"), label_style=ft.TextStyle(size=Font.Size.CAPTION), on_change=self._on_rtos_auto),
+                        ft.Switch(value=False, label=t("debugAuto"), on_change=self._on_rtos_auto),
                         ft.ElevatedButton(content=ft.Text(t("debugRefresh"), size=Font.Size.CAPTION), icon=ft.Icons.REFRESH, on_click=lambda _: self._refresh_rtos()),
                     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                     self._rtos_column,
