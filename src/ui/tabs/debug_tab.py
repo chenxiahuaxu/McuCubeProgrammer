@@ -175,6 +175,11 @@ class DebugTab:
 
     async def _watch_loop(self) -> None:
         while self._watch_running and self._watches:
+            # 暂停时跳过采样
+            if self._backend and self._backend.is_halted:
+                self._rebuild_watch_list()
+                await asyncio.sleep(0.5)
+                continue
             for w in self._watches:
                 if not self._backend or not self._backend.is_connected:
                     continue
