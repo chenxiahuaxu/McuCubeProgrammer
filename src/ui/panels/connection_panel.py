@@ -77,6 +77,8 @@ class ConnectionPanel:
         self._conn_section: ft.Column | None = None
         self._state_dot: ft.Container | None = None
         self._state_label: ft.Text | None = None
+        self._connect_text: ft.Text | None = None
+        self._disconnect_text: ft.Text | None = None
         self._connect_btn: ft.ElevatedButton | None = None
         self._disconnect_btn: ft.OutlinedButton | None = None
 
@@ -277,26 +279,26 @@ class ConnectionPanel:
         self._state_label = ft.Text(
             t("connDisconnected"), size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY,
         )
+        self._connect_text = ft.Text(t("connConnect"), size=Font.Size.CAPTION)
         self._connect_btn = ft.ElevatedButton(
-            text=t("connConnect"),
+            content=self._connect_text,
             icon=ft.Icons.LINK,
             style=ft.ButtonStyle(
                 bgcolor=Colors.ACCENT_PRIMARY,
                 color=Colors.TEXT_PRIMARY,
                 padding=ft.Padding(Spacing.SM, Spacing.XS, Spacing.SM, Spacing.XS),
-                text_style=ft.TextStyle(size=Font.Size.CAPTION),
             ),
             on_click=self._on_connect,
             expand=True,
         )
+        self._disconnect_text = ft.Text(t("connDisconnect"), size=Font.Size.CAPTION)
         self._disconnect_btn = ft.OutlinedButton(
-            text=t("connDisconnect"),
+            content=self._disconnect_text,
             icon=ft.Icons.LINK_OFF,
             style=ft.ButtonStyle(
                 color=Colors.ERROR,
                 side=ft.BorderSide(1, Colors.ERROR),
                 padding=ft.Padding(Spacing.SM, Spacing.XS, Spacing.SM, Spacing.XS),
-                text_style=ft.TextStyle(size=Font.Size.CAPTION),
             ),
             on_click=self._on_disconnect,
             expand=True,
@@ -336,8 +338,8 @@ class ConnectionPanel:
             return
 
         self._connect_btn.disabled = True
-        self._connect_btn.text = t("connConnecting")
-        self._connect_btn.update()
+        self._connect_text.value = t("connConnecting")
+        self._connect_text.update()
 
         cfg = cfg_load()
         frequency = cfg.get("swd_frequency", 200_000)
@@ -377,7 +379,8 @@ class ConnectionPanel:
             self._connect_btn.visible = False
             self._disconnect_btn.visible = True
             self._connect_btn.disabled = False
-            self._connect_btn.text = t("connConnect")
+            self._connect_text.value = t("connConnect")
+            self._connect_text.update()
         else:
             self._state_dot.bgcolor = Colors.TEXT_DIM
             self._state_label.value = t("connDisconnected")
