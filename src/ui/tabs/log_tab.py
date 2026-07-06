@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import flet as ft
 
+from src.i18n import t
 from src.ui.components.log_view import LogView
 from src.ui.theme import Colors, Font, Spacing, standard_divider
 
@@ -30,7 +31,7 @@ class LogTab:  # pylint: disable=too-few-public-methods
                     ft.Row(
                         controls=[
                             ft.Text(
-                                "日志",
+                                t("logTitle"),
                                 size=Font.Size.HEADING,
                                 weight=500,
                                 color=Colors.TEXT_PRIMARY,
@@ -39,12 +40,12 @@ class LogTab:  # pylint: disable=too-few-public-methods
                                 controls=[
                                     ft.IconButton(
                                         icon=ft.Icons.FILE_DOWNLOAD,
-                                        tooltip="导出日志",
+                                        tooltip=t("logExport"),
                                         on_click=self._on_export,
                                     ),
                                     ft.IconButton(
                                         icon=ft.Icons.CLEAR_ALL,
-                                        tooltip="清空日志",
+                                        tooltip=t("logClear"),
                                         on_click=self._on_clear,
                                     ),
                                 ],

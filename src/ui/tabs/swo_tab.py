@@ -9,6 +9,7 @@ import asyncio
 
 import flet as ft
 
+from src.i18n import t
 from src.ui.components.log_view import LogView
 from src.ui.theme import Colors, Font, Spacing, standard_divider
 
@@ -29,7 +30,7 @@ class SwoTab:
 
     def build(self) -> ft.Control:
         self._switch = ft.Switch(
-            ref=self._switch_ref, label="SWO 捕获", value=False, on_change=self._on_toggle
+            ref=self._switch_ref, label=t("swoCapture"), value=False, on_change=self._on_toggle
         )
         self._sysclk = ft.Dropdown(
             ref=self._sysclk_ref, width=130, dense=True, value="168000000",
@@ -50,10 +51,10 @@ class SwoTab:
         )
 
         return ft.Container(content=ft.Column(controls=[
-            ft.Text("SWO 串行调试输出", size=Font.Size.HEADING, weight=500, color=Colors.TEXT_PRIMARY),
-            ft.Row(controls=[ft.Text("系统时钟:", size=Font.Size.CAPTION,
+            ft.Text(t("swoTitle"), size=Font.Size.HEADING, weight=500, color=Colors.TEXT_PRIMARY),
+            ft.Row(controls=[ft.Text(t("swoSysClock"), size=Font.Size.CAPTION,
                                      color=Colors.TEXT_SECONDARY),
-                             self._sysclk, ft.Text("SWO:", size=Font.Size.CAPTION,
+                             self._sysclk, ft.Text(t("swoLabel"), size=Font.Size.CAPTION,
                                                    color=Colors.TEXT_SECONDARY),
                              self._baud, self._switch], spacing=Spacing.SM),
             standard_divider(), self.log_view.build()

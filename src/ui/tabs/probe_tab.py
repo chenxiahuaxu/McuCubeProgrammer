@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import flet as ft
 
+from src.i18n import t
 from src.logic.probe_manager import ProbeManager
 from src.ui.theme import Colors, Font, Spacing
 
@@ -29,7 +30,7 @@ class ProbeTab:  # pylint: disable=too-few-public-methods
                     ft.Row(
                         controls=[
                             ft.ElevatedButton(
-                                content=ft.Text("刷新探针列表"),
+                                content=ft.Text(t("probeRefresh")),
                                 icon=ft.Icons.REFRESH,
                                 on_click=self._on_refresh,
                             ),
@@ -38,7 +39,7 @@ class ProbeTab:  # pylint: disable=too-few-public-methods
                     ),
                     ft.Text(
                         ref=self._empty_ref,
-                        value="未检测到探针",
+                        value=t("probeNotFound"),
                         size=Font.Size.BODY,
                         color=Colors.TEXT_SECONDARY,
                         text_align=ft.TextAlign.CENTER,

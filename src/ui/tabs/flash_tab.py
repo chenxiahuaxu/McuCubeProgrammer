@@ -11,6 +11,7 @@ import os
 
 import flet as ft
 
+from src.i18n import t
 from src.logic.flash_controller import FlashController, FlashTask, FlashProgress
 from src.logic.probe_manager import ProbeManager
 from src.logic.target_manager import TargetManager
@@ -133,7 +134,7 @@ class FlashTab:
                 if self._base_ref.current:
                     self._base_ref.current.value = self._base_address
                     self._base_ref.current.read_only = True
-                    self._base_ref.current.helper_text = "从文件自动解析（不可修改）"
+                    self._base_ref.current.helper_text = t("flashAddressLockedHint")
                     self._base_ref.current.update()
                 self.log_view.add_log("INFO", f"从固件文件解析基地址: {self._base_address}")
             else:
@@ -143,7 +144,7 @@ class FlashTab:
             self._base_address_locked = False
             if self._base_ref.current:
                 self._base_ref.current.read_only = False
-                self._base_ref.current.helper_text = "手动输入烧录地址"
+                self._base_ref.current.helper_text = t("flashAddressManualHint")
                 self._base_ref.current.update()
 
         self._save_selections()
@@ -162,7 +163,7 @@ class FlashTab:
 
     async def _on_pick_pack(self) -> None:
         files = await self._pack_picker.pick_files(
-            dialog_title="选择 CMSIS-Pack 文件",
+            dialog_title=t("flashPackDialogTitle"),
             file_type=ft.FilePickerFileType.CUSTOM,
             allowed_extensions=["pack"],
             allow_multiple=False,
@@ -190,11 +191,11 @@ class FlashTab:
 
         dlg = ft.AlertDialog(
             modal=True,
-            title=ft.Text("安装 CMSIS-Pack"),
-            content=ft.Text(f"确定要安装以下 Pack 吗？\n{pack_path}"),
+            title=ft.Text(t("flashPackInstallTitle")),
+            content=ft.Text(t("flashPackConfirm") + f"\n{pack_path}"),
             actions=[
-                ft.TextButton("取消", on_click=lambda e: close_dlg()),
-                ft.FilledButton("安装", on_click=lambda e: self.page.run_task(do_install)),
+                ft.TextButton(t("flashCancel"), on_click=lambda e: close_dlg()),
+                ft.FilledButton(t("flashPackInstall"), on_click=lambda e: self.page.run_task(do_install)),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
@@ -230,7 +231,7 @@ class FlashTab:
 
     def _on_cancel_click(self) -> None:
         self.flash_controller.cancel()
-        self.flash_panel.set_status("正在取消...", is_error=True)
+        self.flash_panel.set_status(t("flashCancelling"), is_error=True)
 
     async def _do_erase(self) -> None:
         self.flash_panel.set_running(True)
@@ -238,7 +239,7 @@ class FlashTab:
         try:
             await asyncio.to_thread(self.flash_controller._backend.erase_chip)
             self.log_view.add_log("DONE", "Flash 擦除完成")
-            self.flash_panel.set_status("擦除完成", is_error=False)
+            self.flash_panel.set_status(t("flashEraseComplete"), is_error=False)
         except Exception as e:  # pylint: disable=broad-exception-caught  # OK: UI error handler
             self.log_view.add_log("ERROR", f"擦除失败: {e}")
             self.flash_panel.set_status(str(e), is_error=True)
@@ -286,20 +287,20 @@ class FlashTab:
 
         tf = ft.TextField(
             ref=self._base_ref,
-            label="Flash 烧录基地址",
+            label=t("flashBaseAddress"),
             value=self._base_address,
             width=200,
             text_size=13,
             read_only=self._base_address_locked,
             on_change=on_change,
-            hint_text="例如 0x0800C000",
+            hint_text=t("flashExampleAddress"),
             prefix_icon=ft.Icons.MEMORY,
         )
         return ft.Row(
             controls=[
                 tf,
                 ft.Text(
-                    "仅 .bin 文件有效，.hex/.elf 从文件内自动读取地址",
+                    t("flashAddressNote"),
                     size=11,
                     color=Colors.TEXT_DIM,
                     italic=True,
@@ -313,11 +314,11 @@ class FlashTab:
 
     def _validate(self) -> str | None:
         if not self.probe_manager.get_selected_probe():
-            return "请先选择调试探针"
+            return t("flashValidateProbe")
         if not self.target_manager.get_selected_target():
-            return "请先选择目标芯片"
+            return t("flashValidateChip")
         if not self.file_picker.get_path():
-            return "请先选择固件文件"
+            return t("flashValidateFirmware")
         return None
 
     def set_selected_probe(self, unique_id: str) -> None:
@@ -337,7 +338,7 @@ class FlashTab:
                 )
             dd.value = unique_id
             dd.disabled = False
-            dd.hint_text = "选择调试探针"
+            dd.hint_text = t("probeSelectHint")
             dd.update()
         self.log_view.add_log("INFO", f"自动恢复探针: {unique_id[:12]}...")
         targets = self.target_manager.list_all_targets()
