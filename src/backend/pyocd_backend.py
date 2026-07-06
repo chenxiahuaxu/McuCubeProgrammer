@@ -432,6 +432,17 @@ class PyOCDBackend(BackendABC):
         except Exception:
             return False
 
+    def read_memory(self, address: int, size: int) -> bytes:
+        session = self._require_session()
+        try:
+            data = session.target.read_memory_block8(address, size)
+            return bytes(data)
+        except pyocd_exc.Error as e:
+            raise BackendError(
+                ErrorCode.TARGET_CONNECT_FAILED,
+                f"读取内存失败 (0x{address:08X}, {size} bytes): {e}",
+            ) from e
+
     # ── SWO ─────────────────────────────────────────────
 
     def swo_start(self, baudrate: float = 1_000_000) -> None:

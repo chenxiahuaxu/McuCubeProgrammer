@@ -324,6 +324,22 @@ class BackendABC(ABC):
         """返回目标是否处于暂停状态。"""
         ...
 
+    @abstractmethod
+    def read_memory(self, address: int, size: int) -> bytes:
+        """读取目标芯片内存。
+
+        Args:
+            address: 起始地址。
+            size:    读取字节数。
+
+        Returns:
+            读取到的原始字节数据。
+
+        Raises:
+            BackendError(NOT_CONNECTED):  未连接目标。
+        """
+        ...
+
     @property
     @abstractmethod
     def is_connected(self) -> bool:
