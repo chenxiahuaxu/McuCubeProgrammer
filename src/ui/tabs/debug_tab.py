@@ -14,7 +14,7 @@ from src.ui.theme import Colors, Font, Spacing, card_container, standard_divider
 from src.utils.elf_parser import parse_elf_symbols
 from src.utils.logger import add_log
 
-_HISTORY_MAX = 60
+_HISTORY_MAX = 300
 
 
 class DebugTab:
@@ -205,14 +205,16 @@ class DebugTab:
                 if len(w["history"]) > _HISTORY_MAX:
                     w["history"] = w["history"][-_HISTORY_MAX:]
             self._rebuild_watch_list()
-            # 自动刷新趋势弹窗
+            # 自动刷新趋势弹窗（暂停时不绘制）
             if self._trend_name and self._trend_content:
-                new_content = self._build_waveform(self._trend_name)
-                if self._trend_dlg:
-                    self._trend_dlg.content = new_content
-                    self._trend_content = new_content
-                    self._trend_dlg.update()
-            await asyncio.sleep(1)
+                halted = self._backend.is_halted if self._backend else False
+                if not halted:
+                    new_content = self._build_waveform(self._trend_name)
+                    if self._trend_dlg:
+                        self._trend_dlg.content = new_content
+                        self._trend_content = new_content
+                        self._trend_dlg.update()
+            await asyncio.sleep(0.5)
 
     def _show_trend(self, name: str) -> None:
         """弹出指定变量的波形图对话框（自动刷新）。"""
@@ -238,10 +240,10 @@ class DebugTab:
         hist = watch.get("history", [])
         vals = [v for v in hist if isinstance(v, (int, float))]
 
-        W = 560
-        H = 200
-        PAD = 24
-        MAX_DOTS = 60
+        W = 800
+        H = 260
+        PAD = 28
+        MAX_DOTS = 120
         COPPER = "#D99A5A"
         GREEN = "#26A641"
 
@@ -319,8 +321,8 @@ class DebugTab:
         return ft.Column(controls=[
             info,
             ft.Divider(height=6),
-            canvas,
-        ], spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO, width=W + 20, height=290)
+            ft.Row([canvas], scroll=ft.ScrollMode.AUTO),
+        ], spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO, width=560, height=390)
 
     def _close_trend(self) -> None:
         """关闭趋势弹窗并清空自动刷新状态。"""
