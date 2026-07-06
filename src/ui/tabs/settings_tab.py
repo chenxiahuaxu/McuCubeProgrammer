@@ -30,9 +30,13 @@ class SettingsTab:  # pylint: disable=too-few-public-methods
         self.page = page
         cfg = cfg_load()
         self._current_frequency: int = cfg.get("swd_frequency", 200_000)
+        self._connect_mode: str = cfg.get("connect_mode", "normal")
+        self._reset_mode: str = cfg.get("reset_mode", "hw")
         self._freq_label: ft.Text | None = None
         self._l10n = get_l10n()
         self._lang_ref = ft.Ref[ft.Dropdown]()
+        self._connect_ref = ft.Ref[ft.Dropdown]()
+        self._reset_ref = ft.Ref[ft.Dropdown]()
 
     def build(self) -> ft.Control:
         is_dark = self.page.theme_mode == ft.ThemeMode.DARK
@@ -112,6 +116,62 @@ class SettingsTab:  # pylint: disable=too-few-public-methods
                                     ),
                                 ],
                                 spacing=Spacing.SM,
+                            ),
+                        ],
+                        spacing=Spacing.SM,
+                    ),
+                ),
+                standard_divider(),
+                # ── 连接与复位 ──
+                card_container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Text(
+                                t("connModeLabel"),
+                                size=Font.Size.HEADING,
+                                weight=500,
+                                color=Colors.TEXT_PRIMARY,
+                            ),
+                            ft.Dropdown(
+                                ref=self._connect_ref,
+                                value=self._connect_mode,
+                                width=220,
+                                dense=True,
+                                bgcolor=Colors.BG_ELEVATED,
+                                border=ft.Border(
+                                    top=ft.BorderSide(1, Colors.BORDER),
+                                    left=ft.BorderSide(1, Colors.BORDER),
+                                    right=ft.BorderSide(1, Colors.BORDER),
+                                    bottom=ft.BorderSide(1, Colors.BORDER),
+                                ),
+                                border_radius=4,
+                                options=[
+                                    ft.dropdown.Option("normal", t("connModeNormal")),
+                                    ft.dropdown.Option("under_reset", t("connModeUnderReset")),
+                                    ft.dropdown.Option("hotplug", t("connModeHotPlug")),
+                                ],
+                                on_select=self._on_connect_mode_change,
+                            ),
+                            ft.Dropdown(
+                                ref=self._reset_ref,
+                                value=self._reset_mode,
+                                width=220,
+                                dense=True,
+                                bgcolor=Colors.BG_ELEVATED,
+                                border=ft.Border(
+                                    top=ft.BorderSide(1, Colors.BORDER),
+                                    left=ft.BorderSide(1, Colors.BORDER),
+                                    right=ft.BorderSide(1, Colors.BORDER),
+                                    bottom=ft.BorderSide(1, Colors.BORDER),
+                                ),
+                                border_radius=4,
+                                options=[
+                                    ft.dropdown.Option("hw", t("connResetHw")),
+                                    ft.dropdown.Option("sw_sys", t("connResetSwSys")),
+                                    ft.dropdown.Option("sw_vect", t("connResetSwVect")),
+                                    ft.dropdown.Option("sw_core", t("connResetSwCore")),
+                                ],
+                                on_select=self._on_reset_mode_change,
                             ),
                         ],
                         spacing=Spacing.SM,
@@ -203,6 +263,18 @@ class SettingsTab:  # pylint: disable=too-few-public-methods
         new_lang = e.control.value
         if new_lang:
             self._l10n.set_locale(new_lang)
+
+    # ── 连接 / 复位 ──────────────────────────────────────
+
+    def _on_connect_mode_change(self, e: ft.ControlEvent) -> None:
+        cfg = cfg_load()
+        cfg["connect_mode"] = e.control.value
+        cfg_save(cfg)
+
+    def _on_reset_mode_change(self, e: ft.ControlEvent) -> None:
+        cfg = cfg_load()
+        cfg["reset_mode"] = e.control.value
+        cfg_save(cfg)
 
     # ── 关于 ──────────────────────────────────────────────
 

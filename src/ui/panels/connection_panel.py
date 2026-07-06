@@ -1,6 +1,6 @@
 """持久连接面板 — 左侧边栏，始终可见，不跟随标签切换。
 
-包含: 探针选择 / 接口类型 / 连接方式 / 复位方式 / 芯片选择
+包含: 探针选择 / 接口类型 / 芯片选择
 """
 
 from __future__ import annotations
@@ -58,14 +58,10 @@ class ConnectionPanel:
         self._vendor_ref = ft.Ref[ft.Dropdown]()
         self._chip_ref = ft.Ref[ft.Dropdown]()
         self._interface_ref = ft.Ref[ft.RadioGroup]()
-        self._connect_mode_ref = ft.Ref[ft.Dropdown]()
-        self._reset_mode_ref = ft.Ref[ft.Dropdown]()
         self._scanning: bool = False
 
         cfg = cfg_load()
         self._interface: str = cfg.get("interface", "swd")
-        self._connect_mode: str = cfg.get("connect_mode", "normal")
-        self._reset_mode: str = cfg.get("reset_mode", "hw")
 
     # ── 构建 ──────────────────────────────────────────────
 
@@ -96,27 +92,6 @@ class ConnectionPanel:
             ),
             on_change=self._on_interface_change,
         )
-
-        # ── 连接方式 ──
-        connect_dd = _build_dropdown(self._connect_mode_ref, expand=True)
-        connect_dd.value = self._connect_mode
-        connect_dd.options = [
-            ft.dropdown.Option("normal", t("connModeNormal")),
-            ft.dropdown.Option("under_reset", t("connModeUnderReset")),
-            ft.dropdown.Option("hotplug", t("connModeHotPlug")),
-        ]
-        connect_dd.on_select = self._on_connect_mode_change
-
-        # ── 复位方式 ──
-        reset_dd = _build_dropdown(self._reset_mode_ref, expand=True)
-        reset_dd.value = self._reset_mode
-        reset_dd.options = [
-            ft.dropdown.Option("hw", t("connResetHw")),
-            ft.dropdown.Option("sw_sys", t("connResetSwSys")),
-            ft.dropdown.Option("sw_vect", t("connResetSwVect")),
-            ft.dropdown.Option("sw_core", t("connResetSwCore")),
-        ]
-        reset_dd.on_select = self._on_reset_mode_change
 
         # ── 芯片选择 ──
         from src.ui.components.target_selector import _VENDORS, _match_vendor
@@ -149,10 +124,6 @@ class ConnectionPanel:
                     ),
                     _section_label(t("connInterfaceLabel")),
                     interface_group,
-                    _section_label(t("connModeLabel")),
-                    connect_dd,
-                    _section_label(t("connResetLabel")),
-                    reset_dd,
                     ft.Divider(height=1, color=Colors.DIVIDER),
                     _section_label(t("targetVendor")),
                     vendor_dd,
@@ -246,18 +217,10 @@ class ConnectionPanel:
             self.target_mgr.select_target(name)
             self._save_config()
 
-    # ── 接口 / 连接 / 复位 ───────────────────────────────
+    # ── 接口 ───────────────────────────────────────────────
 
     def _on_interface_change(self, e: ft.ControlEvent) -> None:
         self._interface = e.control.value
-        self._save_config()
-
-    def _on_connect_mode_change(self, e: ft.ControlEvent) -> None:
-        self._connect_mode = e.control.value
-        self._save_config()
-
-    def _on_reset_mode_change(self, e: ft.ControlEvent) -> None:
-        self._reset_mode = e.control.value
         self._save_config()
 
     # ── 配置持久化 ───────────────────────────────────────
@@ -269,8 +232,6 @@ class ConnectionPanel:
         if self.target_mgr.get_selected_target():
             cfg["target_name"] = self.target_mgr.get_selected_target()
         cfg["interface"] = self._interface
-        cfg["connect_mode"] = self._connect_mode
-        cfg["reset_mode"] = self._reset_mode
         cfg_save(cfg)
 
     # ── 公共方法 ─────────────────────────────────────────
