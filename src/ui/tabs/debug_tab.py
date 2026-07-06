@@ -261,6 +261,9 @@ class DebugTab:
         if not self._page:
             add_log("WARN", "page 未设置")
             return
+        self._loop.create_task(self._do_show_symbols())
+
+    async def _do_show_symbols(self) -> None:
         try:
             rows: list[ft.Control] = []
             for s in self._elf_symbols_data[:200]:
@@ -271,14 +274,15 @@ class DebugTab:
                     ft.IconButton(icon=ft.Icons.ADD, icon_size=14, icon_color=Colors.ACCENT_PRIMARY,
                                   on_click=lambda e, a=s["addr"], n=s["name"], sz=s["size"]: self._watch_symbol(a, n, sz)),
                 ], spacing=Spacing.SM))
+            content_col = ft.Column(controls=rows, spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO, width=560, height=460)
             dlg = ft.AlertDialog(
                 modal=True,
+                open=True,
                 title=ft.Text(f"ELF Symbols ({len(self._elf_symbols_data)})"),
-                content=ft.Container(content=ft.Column(controls=rows, spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO), width=600, height=500),
+                content=content_col,
                 actions=[ft.ElevatedButton(content=ft.Text("Close"), on_click=lambda _: self._close_dialog(dlg))],
             )
-            self._page.dialog = dlg
-            self._page.update()
+            self._page.show_dialog(dlg)
             add_log("INFO", "符号弹窗已设置")
         except Exception as e:
             add_log("ERROR", f"弹窗失败: {e}")
