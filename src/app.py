@@ -157,10 +157,8 @@ class App:  # pylint: disable=too-few-public-methods
         self._rebuild_tabs()
 
     def _rebuild_tabs(self) -> None:
-        """清除并重建标签页内容，保留侧边栏和选中索引。"""
+        """重建标签页内容（语言切换时调用），保留侧边栏状态。"""
         selected = self.tabs.selected_index if hasattr(self, "tabs") else 0
-        # 找到旧的 Tabs 控件并替换
-        page_controls = list(self.page.controls)
         self.page.controls.clear()
         self._build_ui()
         if hasattr(self, "tabs"):
@@ -172,17 +170,18 @@ class App:  # pylint: disable=too-few-public-methods
     def _build_ui(self) -> None:
         """构建完整 UI：侧边连接面板 + 标签页。"""
         if self.probe_manager and self.target_manager and self.flash_controller:
-            from src.ui.panels.connection_panel import ConnectionPanel
+            # 复用已存在的面板（保留其状态）
+            if not hasattr(self, "connection_panel"):
+                from src.ui.panels.connection_panel import ConnectionPanel
+                self.connection_panel = ConnectionPanel(
+                    page=self.page,
+                    probe_manager=self.probe_manager,
+                    target_manager=self.target_manager,
+                )
             from src.ui.tabs.flash_tab import FlashTab
             from src.ui.tabs.log_tab import LogTab
             from src.ui.tabs.settings_tab import SettingsTab
             from src.ui.tabs.swo_tab import SwoTab
-
-            self.connection_panel = ConnectionPanel(
-                page=self.page,
-                probe_manager=self.probe_manager,
-                target_manager=self.target_manager,
-            )
             self.flash_tab = FlashTab(
                 page=self.page,
                 probe_manager=self.probe_manager,
@@ -205,12 +204,15 @@ class App:  # pylint: disable=too-few-public-methods
                     controls=[
                         self.connection_panel.build(),
                         ft.VerticalDivider(width=1, color=Colors.DIVIDER),
-                        self._build_tabs([
-                            self.flash_tab.build(),
-                            self.swo_tab.build(),
-                            log_tab.build(),
-                            settings_tab.build(),
-                        ]),
+                        ft.Container(
+                            content=self._build_tabs([
+                                self.flash_tab.build(),
+                                self.swo_tab.build(),
+                                log_tab.build(),
+                                settings_tab.build(),
+                            ]),
+                            expand=True,
+                        ),
                     ],
                     expand=True,
                     spacing=0,
