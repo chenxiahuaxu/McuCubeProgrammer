@@ -482,13 +482,17 @@ class PyOCDBackend(BackendABC):
         if not elf_path or not os.path.isfile(elf_path):
             return []
 
-        # 通过 property setter 加载 ELF（pyOCD 内部创建 ELFBinaryFile）
-        session.target.elf = elf_path
+        # 用 ELF 二进制解析符号地址（不注入 target.elf，避免 ELF reader 拦截内存读取）
+        try:
+            from elftools.elf.elffile import ELFFile
+            raw_elf = ELFFile(open(elf_path, "rb"))
+            from pyocd.debug.elf.decoder import ElfSymbolDecoder
+            sd = ElfSymbolDecoder(raw_elf)
+        except Exception as e:
+            _log.warning("Failed to open ELF: %s", e)
+            return []
 
         # 适配器：symbol_decoder.get_symbol_for_name → get_symbol_value
-        sd = session.target.elf.symbol_decoder
-
-        # 诊断：列出所有 FreeRTOS 符号的查找结果
         from pyocd.rtos.freertos import FreeRTOSThreadProvider as _FRT
         from src.utils.logger import add_log
         add_log("INFO", "=== RTOS symbol lookup ===")
@@ -498,8 +502,8 @@ class PyOCDBackend(BackendABC):
 
         class _Sym:
             def get_symbol_value(self, name: str) -> int | None:
-                sym = sd.get_symbol_for_name(name)
-                return sym.address if sym else None
+                sym_info = sd.get_symbol_for_name(name)
+                return sym_info.address if sym_info else None
 
         try:
             # 按顺序尝试所有已知 RTOS provider
