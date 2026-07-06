@@ -543,29 +543,25 @@ class PyOCDBackend(BackendABC):
                         pass
             result: list[dict] = []
             states = {1: "Running", 2: "Ready", 3: "Blocked", 4: "Suspended", 5: "Deleted"}
+            add_log("INFO", "=== RTOS threads ===")
             for thread in threads:
-                try:
-                    sp = thread.get_stack_pointer()
-                    sp_str = f"SP=0x{sp:08X}"
-                except Exception:
-                    sp_str = "—"
-                try:
-                    s = thread.state
-                    st = states.get(s, str(s))
-                except Exception:
-                    st = "—"
-                try:
-                    p = thread.priority
-                    pr = str(p)
-                except Exception:
-                    pr = "—"
+                try: sp = thread.get_stack_pointer()
+                except Exception: sp = None
+                try: s = thread.state
+                except Exception: s = None
+                try: p = thread.priority
+                except Exception: p = None
+                add_log("INFO",
+                    f"  [{type(thread).__name__}] name={thread.name!r} "
+                    f"pri={p!r} state={s!r} sp={sp} "
+                    f"cur={thread.is_current}")
+                sp_str = f"SP=0x{sp:08X}" if sp is not None else "—"
+                st = states.get(s, str(s)) if s is not None else "—"
+                pr = str(p) if p is not None else "—"
                 result.append({
-                    "name": thread.name,
-                    "priority": pr,
-                    "state": st,
-                    "stack_usage": sp_str,
-                    "is_current": thread.is_current,
-                    "unique_id": thread.unique_id,
+                    "name": thread.name, "priority": pr,
+                    "state": st, "stack_usage": sp_str,
+                    "is_current": thread.is_current, "unique_id": thread.unique_id,
                 })
             return result
         except Exception:
