@@ -1,4 +1,7 @@
-"""Flash 标签页 — 芯片选择 + 固件选择 + 烧录工作流。"""
+"""Flash 标签页 — 固件选择 + 烧录工作流。
+
+探针/芯片选择已移至持久连接面板，此标签页只负责固件和烧录操作。
+"""
 
 from __future__ import annotations
 
@@ -14,13 +17,18 @@ from src.logic.target_manager import TargetManager
 from src.ui.components.file_picker import FirmwareFilePicker
 from src.ui.components.flash_panel import FlashPanel
 from src.ui.components.log_view import LogView
-from src.ui.components.target_selector import _VENDORS, _match_vendor
-from src.ui.theme import Colors, Font, Spacing, section_divider
+from src.ui.theme import Colors, section_divider, Spacing
 from src.utils.config import load as load_config, save
 
 
 class FlashTab:
-    """Flash 标签页 — 芯片选择 + 固件选择 + 烧录操作。"""
+    """Flash 标签页 — 固件选择 + 烧录操作。
+
+    职责:
+      - 固件文件选择 + 基地址配置
+      - 擦除/烧录操作编排
+      - FlashController 进度回调桥接到 UI
+    """
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
@@ -39,18 +47,12 @@ class FlashTab:
         self.log_view = log_view
         self.loop = loop
 
-        cfg = load_config()
-        self._saved_target: str = cfg.get("target_name", "")
-
         # ── 基地址输入框 ──
+        cfg = load_config()
         saved_base = cfg.get("base_address", "0x08000000")
         self._base_ref = ft.Ref[ft.TextField]()
         self._base_address: str = saved_base
         self._base_address_locked: bool = False
-
-        # ── 芯片选择下拉框 ──
-        self._vendor_ref = ft.Ref[ft.Dropdown]()
-        self._chip_ref = ft.Ref[ft.Dropdown]()
 
         # ── 子组件 ──
         self.file_picker = FirmwareFilePicker(
@@ -66,28 +68,11 @@ class FlashTab:
     # ── 构建 ─────────────────────────────────────────────
 
     def build(self) -> ft.Control:
-        vendor_dd = self._build_dropdown(self._vendor_ref)
-        vendor_dd.options = [
-            ft.dropdown.Option(key=k, text=f"{label} ({k})") for k, label, _ in _VENDORS
-        ]
-        vendor_dd.on_select = lambda e: self._populate_chips(e.control.value)
-
-        chip_dd = self._build_dropdown(self._chip_ref)
-        chip_dd.editable = True
-        chip_dd.enable_filter = True
-        chip_dd.menu_height = 280
-        chip_dd.on_select = self._on_chip_selected
-
         return ft.Container(
             content=ft.Column(
                 tight=True,
                 spacing=Spacing.LG,
                 controls=[
-                    ft.Text(t("targetVendor"), size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY),
-                    vendor_dd,
-                    ft.Text(t("targetChip"), size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY),
-                    chip_dd,
-                    section_divider(),
                     self.file_picker.build(),
                     section_divider(),
                     self._build_base_address(),
@@ -98,55 +83,6 @@ class FlashTab:
             padding=Spacing.XXL,
             expand=True,
         )
-
-    # ── 芯片选择 ─────────────────────────────────────────
-
-    def _build_dropdown(self, ref) -> ft.Dropdown:
-        return ft.Dropdown(
-            ref=ref,
-            dense=True,
-            text_size=11,
-            bgcolor=Colors.BG_ELEVATED,
-            border=ft.Border(
-                top=ft.BorderSide(1, Colors.BORDER),
-                left=ft.BorderSide(1, Colors.BORDER),
-                right=ft.BorderSide(1, Colors.BORDER),
-                bottom=ft.BorderSide(1, Colors.BORDER),
-            ),
-            border_radius=4,
-            width=260,
-        )
-
-    def _populate_chips(self, vendor_key: str) -> None:
-        if not vendor_key:
-            return
-        prefix = ""
-        for k, _, p in _VENDORS:
-            if k == vendor_key:
-                prefix = p
-                break
-        all_targets = self.target_manager.list_all_targets()
-        if prefix:
-            if vendor_key == "OTHER":
-                all_prefixes = [p for _, _, p in _VENDORS if p]
-                chips = [n for n, _ in all_targets if not any(_match_vendor(n, pp) for pp in all_prefixes)]
-            else:
-                chips = [n for n, _ in all_targets if _match_vendor(n, prefix)]
-        else:
-            chips = [n for n, _ in all_targets]
-        self._chip_ref.current.options = [
-            ft.dropdown.Option(key=name, text=name) for name in chips
-        ]
-        self._chip_ref.current.hint_text = t("targetCount", count=len(chips))
-        self._chip_ref.current.update()
-
-    def _on_chip_selected(self, e: ft.ControlEvent) -> None:
-        name = e.control.value
-        if name:
-            self.target_manager.select_target(name)
-            cfg = load_config()
-            cfg["target_name"] = name
-            save(cfg)
 
     # ── 固件选择 ─────────────────────────────────────────
 
