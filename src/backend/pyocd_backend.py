@@ -113,10 +113,28 @@ def _extract_target_info(target: Target) -> TargetInfo:
     part_number: str = getattr(target, "part_number", "") or ""
     vendor: str = getattr(target, "vendor", "") or ""
 
+    # DAP IDCODE
+    dap_idcode: str = ""
+    try:
+        dap_idcode = f"0x{target.dp.dpidr.idr:08X}"
+    except Exception:
+        pass
+
+    # 内核名称
+    core_name: str = ""
+    try:
+        cores = list(target.cores.values())
+        if cores:
+            core_name = cores[0].name
+    except Exception:
+        pass
+
     return TargetInfo(
         name=getattr(target, "name", None) or target.__class__.__name__.lower() or "unknown",
         part_number=part_number,
         vendor=vendor,
+        dap_idcode=dap_idcode,
+        core_name=core_name,
         flash_regions=flash_regions,
         ram_regions=ram_regions,
         ram_start=ram_start,
