@@ -283,7 +283,7 @@ class ConnectionPanel:
         target_name = self.target_mgr.get_selected_target() or ""
 
         try:
-            info = self._backend.connect(
+            self._backend.connect(
                 target=target_name,
                 probe_uid=probe.unique_id,
                 frequency=frequency,
