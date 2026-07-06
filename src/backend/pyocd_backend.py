@@ -544,21 +544,37 @@ class PyOCDBackend(BackendABC):
             result: list[dict] = []
             states = {1: "Running", 2: "Ready", 3: "Blocked", 4: "Suspended", 5: "Deleted"}
             for thread in threads:
+                tcb_addr = thread.unique_id
                 try: sp = thread.get_stack_pointer()
                 except Exception: sp = None
                 try: s = thread.state
                 except Exception: s = None
                 try: p = thread.priority
                 except Exception: p = None
-                sp_str = f"0x{sp:08X}" if sp is not None else "—"
-                st = states.get(s, str(s)) if s is not None else "—"
-                pr = str(p) if p is not None else "—"
-                tcb = f"0x{thread.unique_id:08X}" if thread.unique_id else "—"
+
+                # 读取 TCB 中 pxStack (偏移 48, 4 字节) — 栈起始地址
+                stack_start = None
+                try:
+                    pxstack_bytes = session.target.read_memory_block8(tcb_addr + 48, 4)
+                    stack_start = pxstack_bytes[0] | (pxstack_bytes[1] << 8) | (pxstack_bytes[2] << 16) | (pxstack_bytes[3] << 24)
+                except Exception:
+                    pass
+
+                # 计算栈使用量
+                if stack_start and sp and tcb_addr:
+                    stack_size = tcb_addr - stack_start
+                    stack_used = tcb_addr - sp
+                    stack_free = stack_size - stack_used
+                    stack_info = f"{stack_used}B/{stack_size}B"
+                else:
+                    stack_info = f"0x{sp:08X}" if sp else "—"
+
                 result.append({
-                    "name": thread.name, "priority": pr,
-                    "state": st, "stack_usage": sp_str,
-                    "tcb": tcb,
-                    "is_current": thread.is_current, "unique_id": thread.unique_id,
+                    "name": thread.name, "priority": str(p) if p is not None else "—",
+                    "state": states.get(s, str(s)) if s is not None else "—",
+                    "stack_usage": stack_info,
+                    "tcb": f"0x{tcb_addr:08X}" if tcb_addr else "—",
+                    "is_current": thread.is_current, "unique_id": tcb_addr,
                 })
             return result
         except Exception:

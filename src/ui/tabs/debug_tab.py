@@ -271,7 +271,7 @@ class DebugTab:
                     ft.Text(t("debugWatchName"), width=140, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
                     ft.Text("Prio", width=50, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
                     ft.Text("State", width=80, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
-                    ft.Text("SP", width=100, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
+                    ft.Text("Stack", width=100, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
                     ft.Text("TCB", width=100, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
                 ], spacing=Spacing.SM)
                 self._rtos_column.controls.append(hdr)
