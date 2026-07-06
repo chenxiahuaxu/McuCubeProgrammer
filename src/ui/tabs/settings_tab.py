@@ -108,7 +108,7 @@ class SettingsTab:  # pylint: disable=too-few-public-methods
                                                 text=t("settingsLangEn"),
                                             ),
                                         ],
-                                        on_change=self._on_language_change,
+                                        on_select=self._on_language_change,
                                     ),
                                 ],
                                 spacing=Spacing.SM,
