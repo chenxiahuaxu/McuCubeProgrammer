@@ -75,40 +75,40 @@ def _probe_to_probe_info(probe: debug_probe.DebugProbe) -> ProbeInfo:
 def _extract_target_info(target: Target) -> TargetInfo:
     """从 pyOCD Target 对象中提取芯片的存储布局信息。"""
     memory_map: MemoryMap = target.memory_map
-
-    # 诊断：列出所有内存区域
     all_regions = list(memory_map.regions)
-    _log.info(
-        "MemoryMap diagnostics: total_regions=%d, iter_matching('flash')=%d, "
-        "iter_matching('ram')=%d, default_ram=%s, default_flash=%s",
-        len(all_regions),
-        len(list(memory_map.iter_matching_regions(type="flash"))),
-        len(list(memory_map.iter_matching_regions(type="ram"))),
-        memory_map.get_default_region_of_type("ram"),
-        memory_map.get_default_region_of_type("flash"),
-    )
-    for r in all_regions:
-        _log.info(
-            "  region: name=%s type=%s start=0x%08X length=%d sector=%s access=%s",
-            r.name, r.type, r.start, r.length,
-            getattr(r, "sector_size", "N/A"), r.access,
-        )
 
+    # 部分 pyOCD 版本的 region.type 是枚举而非字符串，
+    # 因此统一转为字符串做包含匹配，兼容两种形态
     flash_regions: list[FlashRegion] = []
-    for region in memory_map.iter_matching_regions(type="flash"):
-        flash_regions.append(
-            FlashRegion(
-                name=region.name,
-                start=region.start,
-                length=region.length,
-                sector_size=getattr(region, "sector_size", 0) or 0,
-                access=region.access,
+    for r in all_regions:
+        rt = str(r.type).lower()
+        if "flash" in rt or "rom" in rt:
+            flash_regions.append(
+                FlashRegion(
+                    name=r.name,
+                    start=r.start,
+                    length=r.length,
+                    sector_size=getattr(r, "sector_size", 0) or 0,
+                    access=getattr(r, "access", "rwx"),
+                )
             )
-        )
 
-    ram_region = memory_map.get_default_region_of_type("ram")
-    ram_start: int = ram_region.start if ram_region else 0
-    ram_size: int = ram_region.length if ram_region else 0
+    ram_regions: list[FlashRegion] = []
+    for r in all_regions:
+        rt = str(r.type).lower()
+        if "ram" in rt:
+            ram_regions.append(
+                FlashRegion(
+                    name=r.name,
+                    start=r.start,
+                    length=r.length,
+                    sector_size=0,  # RAM 没有扇区概念
+                    access=getattr(r, "access", "rw"),
+                )
+            )
+
+    ram_start: int = ram_regions[0].start if ram_regions else 0
+    ram_size: int = sum(r.length for r in ram_regions)
 
     part_number: str = getattr(target, "part_number", "") or ""
     vendor: str = getattr(target, "vendor", "") or ""
@@ -118,6 +118,7 @@ def _extract_target_info(target: Target) -> TargetInfo:
         part_number=part_number,
         vendor=vendor,
         flash_regions=flash_regions,
+        ram_regions=ram_regions,
         ram_start=ram_start,
         ram_size=ram_size,
     )

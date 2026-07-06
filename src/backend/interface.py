@@ -89,11 +89,14 @@ class TargetInfo:
     flash_regions: list[FlashRegion] = field(default_factory=list)
     """所有 Flash 区域列表。"""
 
+    ram_regions: list[FlashRegion] = field(default_factory=list)
+    """所有 RAM 区域列表（可能有多个不连续的 RAM 块）。"""
+
     ram_start: int = 0
-    """RAM 起始地址。"""
+    """主 RAM 起始地址（首个 RAM 区域）。"""
 
     ram_size: int = 0
-    """RAM 大小（字节）。"""
+    """所有 RAM 区域总容量（字节）。"""
 
     @property
     def total_flash_size(self) -> int:
@@ -106,6 +109,11 @@ class TargetInfo:
         if not self.flash_regions:
             return 0
         return self.flash_regions[0].start
+
+    @property
+    def total_ram_size(self) -> int:
+        """所有 RAM 区域的总容量。"""
+        return sum(r.length for r in self.ram_regions)
 
 
 @dataclass
