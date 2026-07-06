@@ -250,6 +250,8 @@ class DebugTab:
             self._elf_symbols_data = symbols
             self._elf_view_btn.disabled = False
             self._elf_view_btn.update()
+            # ELF 加载成功后自动触发 RTOS 刷新
+            self._refresh_rtos()
         except Exception as e:
             add_log("ERROR", f"ELF 解析失败: {e}")
 
