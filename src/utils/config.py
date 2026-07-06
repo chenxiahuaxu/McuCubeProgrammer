@@ -30,6 +30,10 @@ def load() -> dict:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
+    except UnicodeDecodeError:
+        # Fallback: old config file may be in system default encoding (e.g. GBK on Windows)
+        with open(CONFIG_PATH) as f:  # pylint: disable=unspecified-encoding
+            return json.load(f)
 
 
 def save(data: dict) -> None:
