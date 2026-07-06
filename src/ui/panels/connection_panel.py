@@ -16,6 +16,7 @@ from src.ui.theme import Colors, Font, Spacing
 from src.utils.config import load as cfg_load, save as cfg_save
 
 PANEL_WIDTH: int = 240
+DROPDOWN_WIDTH: int = PANEL_WIDTH - 36  # account for padding
 
 
 def _section_label(text: str) -> ft.Text:
@@ -67,7 +68,7 @@ class ConnectionPanel:
 
     def build(self) -> ft.Control:
         # ── 探针选择 ──
-        probe_dd = _build_dropdown(self._probe_dd_ref, expand=True)
+        probe_dd = _build_dropdown(self._probe_dd_ref, DROPDOWN_WIDTH - 30)
         probe_dd.hint_text = t("probeSelectHint")
         probe_dd.options = []
         probe_dd.on_select = self._on_probe_selected
@@ -96,7 +97,7 @@ class ConnectionPanel:
         # ── 芯片选择 ──
         from src.ui.components.target_selector import _VENDORS, _match_vendor
 
-        vendor_dd = _build_dropdown(self._vendor_ref, expand=True)
+        vendor_dd = _build_dropdown(self._vendor_ref, DROPDOWN_WIDTH)
         vendor_dd.hint_text = t("targetVendor")
         vendor_dd.options = [
             ft.dropdown.Option(key=k, text=f"{label} ({k})") for k, label, _ in _VENDORS
@@ -105,7 +106,7 @@ class ConnectionPanel:
             e.control.value, _VENDORS, _match_vendor
         )
 
-        chip_dd = _build_dropdown(self._chip_ref, expand=True)
+        chip_dd = _build_dropdown(self._chip_ref, DROPDOWN_WIDTH)
         chip_dd.hint_text = t("targetChip")
         chip_dd.editable = True
         chip_dd.enable_filter = True
@@ -131,7 +132,6 @@ class ConnectionPanel:
                     chip_dd,
                 ],
                 spacing=Spacing.SM,
-                expand=True,
             ),
             width=PANEL_WIDTH,
             bgcolor=Colors.BG_SURFACE,
