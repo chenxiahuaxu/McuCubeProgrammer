@@ -351,6 +351,7 @@ class App:  # pylint: disable=too-few-public-methods
 
             dlg = ft.AlertDialog(
                 modal=True,
+                open=True,
                 title=ft.Text(t("dialogProgrammingTitle")),
                 content=ft.Text(t("dialogProgrammingMsg")),
                 actions=[
@@ -359,9 +360,7 @@ class App:  # pylint: disable=too-few-public-methods
                 ],
                 actions_alignment=ft.MainAxisAlignment.END,
             )
-            self.page.dialog = dlg
-            dlg.open = True
-            self.page.update()
+            self.page.show_dialog(dlg)
         else:
             try:
                 await self.page.window.destroy()
