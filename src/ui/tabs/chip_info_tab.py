@@ -151,13 +151,22 @@ class ChipInfoTab:
                 t("chipTotalFlash"),
                 f"{_fmt_size(info.total_flash_size)}  ({info.total_flash_size:,} B)",
             ),
-            self._info_row(
-                t("chipRamInfo"),
-                f"{_fmt_addr(info.ram_start)} \u2014 "
-                f"{_fmt_addr(info.ram_start + info.ram_size)}"
-                f"  ({_fmt_size(info.ram_size)})",
-            ),
         ]
+        # 每个 RAM 区域单独一行
+        for region in info.ram_regions:
+            rows.append(
+                self._info_row(
+                    region.name or "RAM",
+                    f"{_fmt_addr(region.start)} \u2014 "
+                    f"{_fmt_addr(region.start + region.length)}"
+                    f"  ({_fmt_size(region.length)})",
+                ),
+            )
+        if len(info.ram_regions) > 1:
+            rows.append(self._info_row(
+                t("chipTotalRam"),
+                _fmt_size(info.total_ram_size),
+            ))
         self._content.controls.append(
             card_container(
                 content=ft.Column(
@@ -215,6 +224,8 @@ class ChipInfoTab:
 
         rows: list[ft.Control] = [header, standard_divider()]
         for r in info.flash_regions:
+            sector_count = r.length // r.sector_size if r.sector_size else 1
+            sector_label = f"{_fmt_size(r.sector_size)}  \u00d7{sector_count}"
             rows.append(
                 ft.Row(
                     controls=[
@@ -240,7 +251,7 @@ class ChipInfoTab:
                             color=Colors.TEXT_PRIMARY,
                         ),
                         ft.Text(
-                            _fmt_size(r.sector_size),
+                            sector_label,
                             width=90,
                             size=Font.Size.CAPTION,
                             color=Colors.TEXT_PRIMARY,
