@@ -5,6 +5,7 @@
   "tabSwo": "SWO",
   "tabLog": "Log",
   "tabSettings": "Settings",
+  "tabAbout": "About",
   "probeSelectHint": "Select Debug Probe",
   "probeRefresh": "Refresh Probe List",
   "probeNotFound": "No Probe Detected",

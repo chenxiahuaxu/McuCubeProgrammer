@@ -6,6 +6,7 @@
   "tabSwo": "SWO",
   "tabLog": "日志",
   "tabSettings": "设置",
+  "tabAbout": "关于",
   "probeSelectHint": "选择调试探针",
   "probeRefresh": "刷新探针列表",
   "probeNotFound": "未检测到探针",
