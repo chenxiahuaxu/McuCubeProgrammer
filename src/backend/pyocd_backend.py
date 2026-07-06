@@ -542,18 +542,15 @@ class PyOCDBackend(BackendABC):
                     except Exception:
                         pass
             result: list[dict] = []
+            states = {1: "Running", 2: "Ready", 3: "Blocked", 4: "Suspended", 5: "Deleted"}
             for thread in threads:
-                desc = getattr(thread, "description", "") or ""
-                priority = state = stack_usage = ""
-                for part in desc.split(";"):
-                    part = part.strip()
-                    if "Priority" in part: priority = part.split(":")[-1].strip()
-                    elif "State" in part: state = part.split(":")[-1].strip()
-                    elif "Stack" in part: stack_usage = part.split(":")[-1].strip()
                 result.append({
-                    "name": thread.name, "priority": priority,
-                    "state": state, "stack_usage": stack_usage,
-                    "is_current": thread.is_current, "unique_id": thread.unique_id,
+                    "name": thread.name,
+                    "priority": str(thread.priority),
+                    "state": states.get(thread.state, str(thread.state)),
+                    "stack_usage": f"SP=0x{thread.get_stack_pointer():08X}",
+                    "is_current": thread.is_current,
+                    "unique_id": thread.unique_id,
                 })
             return result
         except Exception:
