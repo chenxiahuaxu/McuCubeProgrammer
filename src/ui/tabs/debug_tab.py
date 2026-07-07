@@ -52,10 +52,10 @@ class DebugTab:
         self._reset_btn = ft.ElevatedButton(content=ft.Text(t("debugReset")), icon=ft.Icons.RESTART_ALT, on_click=lambda _: self._do_reset())
         self._apply_state()
 
-        self._add_addr = ft.TextField(hint_text="0x20000000", label=t("debugWatchAddr"), label_style=ft.TextStyle(size=10), width=140, text_size=12)
-        self._add_size = ft.Dropdown(label=t("debugWatchType"), label_style=ft.TextStyle(size=10), width=100, dense=True, text_size=12, value="4",
+        self._add_addr = ft.TextField(hint_text="0x20000000", label=t("debugWatchAddr"), label_style=ft.TextStyle(size=13), width=140, text_size=12)
+        self._add_size = ft.Dropdown(label=t("debugWatchType"), label_style=ft.TextStyle(size=13), width=100, dense=True, text_size=12, value="4",
             options=[ft.dropdown.Option("1", "u8"), ft.dropdown.Option("2", "u16"), ft.dropdown.Option("4", "u32"), ft.dropdown.Option("4f", "f32")])
-        self._add_name = ft.TextField(hint_text=t("debugWatchName"), label=t("debugWatchName"), label_style=ft.TextStyle(size=10), width=110, text_size=12)
+        self._add_name = ft.TextField(hint_text=t("debugWatchName"), label=t("debugWatchName"), label_style=ft.TextStyle(size=13), width=110, text_size=12)
         add_btn = ft.ElevatedButton(content=ft.Text(t("debugWatchAdd"), size=Font.Size.CAPTION), icon=ft.Icons.ADD, on_click=lambda _: self._add_watch())
         self._interval_dd = ft.Dropdown(
             width=90, dense=True, text_size=11, value="0.5",
