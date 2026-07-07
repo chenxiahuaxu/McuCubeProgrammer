@@ -22,23 +22,23 @@ from __future__ import annotations
 
 from flet_l10n import Localizations
 
-_l10n: Localizations | None = None
+_L10N: Localizations | None = None
 
 
 def get_l10n(locales_dir: str = "locales") -> Localizations:
     """获取或初始化全局 L10n 单例。"""
-    global _l10n
-    if _l10n is None:
-        _l10n = Localizations(
+    global _L10N  # pylint: disable=global-statement
+    if _L10N is None:
+        _L10N = Localizations(
             arb_dir=locales_dir,
             default_locale=None,  # auto-detect system language
             fallback_locale="zh",
         )
-    return _l10n
+    return _L10N
 
 
 def t(key: str, **kwargs) -> str:
     """翻译查找快捷函数。等价于 get_l10n().t(key, **kwargs)。"""
-    if _l10n is None:
+    if _L10N is None:
         return key  # 未初始化时返回 key 本身
-    return _l10n.t(key, **kwargs)
+    return _L10N.t(key, **kwargs)

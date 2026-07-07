@@ -13,7 +13,7 @@ import asyncio
 import flet as ft
 
 from src.i18n import get_l10n, t
-from src.ui.theme import APP_TITLE, APP_VERSION, Colors, create_dark_theme
+from src.ui.theme import APP_TITLE, APP_VERSION, create_dark_theme
 from src.utils.logger import add_log, Logger as _Logger
 
 
@@ -183,13 +183,13 @@ class App:  # pylint: disable=too-few-public-methods
             # 复用已存在的面板（保留其状态）
             if not hasattr(self, "connection_panel"):
                 from src.ui.panels.connection_panel import ConnectionPanel
-            self.connection_panel = ConnectionPanel(
-                page=self.page,
-                probe_manager=self.probe_manager,
-                target_manager=self.target_manager,
-                backend=self.flash_controller._backend,
-                on_resize=self._on_panel_resize,
-            )
+                self.connection_panel = ConnectionPanel(
+                    page=self.page,
+                    probe_manager=self.probe_manager,
+                    target_manager=self.target_manager,
+                    backend=self.flash_controller._backend,
+                    on_resize=self._on_panel_resize,
+                )
             from src.ui.tabs.about_tab import AboutTab
             from src.ui.tabs.chip_info_tab import ChipInfoTab
             from src.ui.tabs.debug_tab import DebugTab

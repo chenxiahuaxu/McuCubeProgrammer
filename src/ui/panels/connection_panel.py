@@ -46,7 +46,7 @@ def _build_dropdown(ref, width: int | None = None, expand: bool = False) -> ft.D
     )
 
 
-class ConnectionPanel:
+class ConnectionPanel:  # pylint: disable=too-many-instance-attributes
     """持久连接面板。"""
 
     def __init__(
@@ -356,7 +356,7 @@ class ConnectionPanel:
                 frequency=frequency,
             )
             self._connected = True
-        except Exception as ex:
+        except Exception as ex:  # pylint: disable=broad-exception-caught  # OK: UI error handler
             self.page.snack_bar = ft.SnackBar(
                 content=ft.Text(f"{t('connFailed')}: {ex}"),
                 bgcolor=Colors.ERROR,
@@ -370,7 +370,7 @@ class ConnectionPanel:
         """断开目标芯片连接。"""
         try:
             self._backend.disconnect()
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught  # OK: UI error handler
             pass
         self._connected = False
         self._update_conn_state()

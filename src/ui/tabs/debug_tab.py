@@ -18,7 +18,7 @@ from src.utils.logger import add_log
 _HISTORY_MAX = 600
 
 
-class DebugTab:
+class DebugTab:  # pylint: disable=too-many-instance-attributes
 
     def __init__(self, backend: BackendABC, loop: asyncio.AbstractEventLoop):
         self._backend = backend
@@ -109,35 +109,54 @@ class DebugTab:
     # ── 目标控制 ─────────────────────────────────────────
     def _apply_state(self) -> None:
         if not self._backend or not self._backend.is_connected:
-            self._state_text.value = t("debugNotConnected"); self._state_text.color = Colors.TEXT_SECONDARY
-            self._toggle_btn.content.value = t("debugHalt"); self._toggle_btn.icon = ft.Icons.PAUSE
-            self._toggle_btn.disabled = True; self._reset_btn.disabled = True
+            self._state_text.value = t("debugNotConnected")
+            self._state_text.color = Colors.TEXT_SECONDARY
+            self._toggle_btn.content.value = t("debugHalt")
+            self._toggle_btn.icon = ft.Icons.PAUSE
+            self._toggle_btn.disabled = True
+            self._reset_btn.disabled = True
         elif self._backend.is_halted:
-            self._state_text.value = t("debugHalted"); self._state_text.color = Colors.WARNING
-            self._toggle_btn.content.value = t("debugResume"); self._toggle_btn.icon = ft.Icons.PLAY_ARROW
-            self._toggle_btn.disabled = False; self._reset_btn.disabled = False
+            self._state_text.value = t("debugHalted")
+            self._state_text.color = Colors.WARNING
+            self._toggle_btn.content.value = t("debugResume")
+            self._toggle_btn.icon = ft.Icons.PLAY_ARROW
+            self._toggle_btn.disabled = False
+            self._reset_btn.disabled = False
         else:
-            self._state_text.value = t("debugRunning"); self._state_text.color = Colors.SUCCESS
-            self._toggle_btn.content.value = t("debugHalt"); self._toggle_btn.icon = ft.Icons.PAUSE
-            self._toggle_btn.disabled = False; self._reset_btn.disabled = False
+            self._state_text.value = t("debugRunning")
+            self._state_text.color = Colors.SUCCESS
+            self._toggle_btn.content.value = t("debugHalt")
+            self._toggle_btn.icon = ft.Icons.PAUSE
+            self._toggle_btn.disabled = False
+            self._reset_btn.disabled = False
 
     def _refresh_state(self) -> None:
         self._apply_state()
-        self._state_text.update(); self._toggle_btn.update(); self._reset_btn.update()
+        self._state_text.update()
+        self._toggle_btn.update()
+        self._reset_btn.update()
 
     def refresh(self) -> None:
         self._refresh_state()
 
     def _do_toggle(self) -> None:
         try:
-            if self._backend.is_halted: self._backend.resume(); add_log("INFO", "目标已恢复运行")
-            else: self._backend.halt(); add_log("INFO", "目标已暂停")
-        except Exception as e: add_log("ERROR", f"操作失败: {e}")
+            if self._backend.is_halted:
+                self._backend.resume()
+                add_log("INFO", "目标已恢复运行")
+            else:
+                self._backend.halt()
+                add_log("INFO", "目标已暂停")
+        except Exception as e:  # pylint: disable=broad-exception-caught  # OK: UI error handler
+            add_log("ERROR", f"操作失败: {e}")
         self._refresh_state()
 
     def _do_reset(self) -> None:
-        try: self._backend.reset(); add_log("INFO", "目标已复位")
-        except Exception as e: add_log("ERROR", f"复位失败: {e}")
+        try:
+            self._backend.reset()
+            add_log("INFO", "目标已复位")
+        except Exception as e:  # pylint: disable=broad-exception-caught  # OK: UI error handler
+            add_log("ERROR", f"复位失败: {e}")
         self._refresh_state()
 
     # ── 变量监控 ─────────────────────────────────────────
@@ -204,19 +223,24 @@ class DebugTab:
                     data = await asyncio.to_thread(self._backend.read_memory, w["addr"], w["size"])
                     if w["is_float"] and w["size"] == 4:
                         val = struct.unpack("<f", data)[0]
-                        w["value"] = f"{val:.6f}"; w["val_num"] = val
+                        w["value"] = f"{val:.6f}"
+                        w["val_num"] = val
                     elif w["size"] == 1:
-                        w["value"] = f"0x{data[0]:02X} ({data[0]})"; w["val_num"] = data[0]
+                        w["value"] = f"0x{data[0]:02X} ({data[0]})"
+                        w["val_num"] = data[0]
                     elif w["size"] == 2:
                         val = struct.unpack("<H", data)[0]
-                        w["value"] = f"0x{val:04X} ({val})"; w["val_num"] = val
+                        w["value"] = f"0x{val:04X} ({val})"
+                        w["val_num"] = val
                     elif w["size"] == 4:
                         val = struct.unpack("<I", data)[0]
-                        w["value"] = f"0x{val:08X} ({val})"; w["val_num"] = val
+                        w["value"] = f"0x{val:08X} ({val})"
+                        w["val_num"] = val
                     else:
                         w["val_num"] = 0
-                except Exception:
-                    w["value"] = "err"; w["val_num"] = None
+                except Exception:  # pylint: disable=broad-exception-caught  # OK: UI error handler
+                    w["value"] = "err"
+                    w["val_num"] = None
             # 记录历史（时间戳 + 值）
             for w in self._watches:
                 if not w.get("history"):
@@ -282,11 +306,14 @@ class DebugTab:
         files = await picker.pick_files(dialog_title="Select ELF file", allowed_extensions=["elf", "axf"])
         if files and files[0].path:
             self._elf_full_path = files[0].path
-            self._elf_path.value = files[0].path; self._elf_path.tooltip = files[0].path; self._elf_path.update()
+            self._elf_path.value = files[0].path
+            self._elf_path.tooltip = files[0].path
+            self._elf_path.update()
             self._load_elf(files[0].path)
 
     def _load_elf(self, path: str) -> None:
-        if not path: return
+        if not path:
+            return
         try:
             symbols = parse_elf_symbols(path)
             add_log("INFO", f"从 ELF 加载 {len(symbols)} 个全局变量符号")
@@ -295,7 +322,7 @@ class DebugTab:
             self._elf_view_btn.update()
             # ELF 加载成功后自动触发 RTOS 刷新
             self._refresh_rtos()
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught  # OK: UI error handler
             add_log("ERROR", f"ELF 解析失败: {e}")
 
     def _show_symbols(self) -> None:
@@ -331,7 +358,7 @@ class DebugTab:
                     ], spacing=Spacing.SM))
                 try:
                     rows_col.update()
-                except Exception:
+                except Exception:  # pylint: disable=broad-exception-caught  # OK: UI error handler
                     pass  # 控件尚未挂载到页面，跳过
 
             count_label = ft.Text("", size=Font.Size.CAPTION, color=Colors.TEXT_DIM)
@@ -355,7 +382,7 @@ class DebugTab:
                 actions=[ft.ElevatedButton(content=ft.Text("Close"), on_click=lambda _: self._close_dialog(dlg))],
             )
             self._page.show_dialog(dlg)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught  # OK: UI error handler
             add_log("ERROR", f"弹窗失败: {e}")
 
     def _close_dialog(self, dlg) -> None:
@@ -420,7 +447,7 @@ class DebugTab:
                                       on_click=lambda e, n=name: self._loop.create_task(self._show_rtos_waveform(n))),
                     ], spacing=Spacing.SM))
             self._rtos_column.update()
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught  # OK: UI error handler
             import traceback
             add_log("ERROR", f"RTOS 读取失败:\n{traceback.format_exc()}")
 

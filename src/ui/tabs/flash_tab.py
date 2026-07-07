@@ -21,7 +21,7 @@ from src.ui.theme import Colors, section_divider, Spacing
 from src.utils.config import load as load_config, save
 
 
-class FlashTab:
+class FlashTab:  # pylint: disable=too-few-public-methods
     """Flash 标签页 — 固件选择 + 烧录操作。
 
     职责:

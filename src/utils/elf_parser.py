@@ -18,7 +18,7 @@ def parse_elf_symbols(file_path: str) -> list[dict]:
         for section_name in (".symtab", ".dynsym"):
             try:
                 symtab = elf.get_section_by_name(section_name)
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught  # OK: parse fallback
                 continue
             if symtab is None:
                 continue

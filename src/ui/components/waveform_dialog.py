@@ -39,7 +39,7 @@ def _nice_interval(span: float, target_ticks: int = 5) -> float:
     return nice * exp
 
 
-class WaveformDialog:
+class WaveformDialog:  # pylint: disable=too-many-instance-attributes
     """单通道波形弹窗。
 
     特性：
@@ -281,7 +281,7 @@ class WaveformDialog:
 
     # ── 刷新 ───────────────────────────────────────────────
 
-    async def _refresh(self) -> None:
+    async def _refresh(self) -> None:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements  # OK: waveform rendering
         if self._refreshing:
             return
         self._refreshing = True

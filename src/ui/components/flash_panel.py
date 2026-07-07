@@ -13,7 +13,7 @@ from src.i18n import t
 from src.ui.theme import Colors, Font, Spacing
 
 
-class FlashPanel:
+class FlashPanel:  # pylint: disable=too-many-instance-attributes
     """烧录操作面板。
 
     包含擦除模式选择器、擦除按钮、烧录按钮、取消按钮、进度条、状态文字。

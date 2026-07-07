@@ -16,6 +16,7 @@ disable=
     C0413,  # wrong-import-position (sys.path setup in main.py)
     C0415,  # import-outside-toplevel (lazy imports for optional deps)
     R0801,  # duplicate-code (flet UI border boilerplate across tabs)
+    C0301,  # line-too-long (debug_tab visual alignment — see last comment in PR#X)
 
 [FORMAT]
 max-line-length=100

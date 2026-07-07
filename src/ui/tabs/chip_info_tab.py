@@ -90,7 +90,7 @@ class ChipInfoTab:
 
         try:
             info: TargetInfo = self._backend.get_target_info()
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught  # OK: UI error handler
             self._content.controls.append(
                 card_container(
                     content=ft.Text(
@@ -348,7 +348,7 @@ class ChipInfoTab:
             size = int(self._hex_size.value)
             data = self._backend.read_memory(addr, size)
             self._hex_output.value = self._format_hex(data, addr)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught  # OK: UI error handler
             self._hex_output.value = f"Error: {e}"
         self._hex_output.update()
 

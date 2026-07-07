@@ -15,7 +15,7 @@ from src.ui.theme import (
 )
 
 
-class AboutTab:
+class AboutTab:  # pylint: disable=too-few-public-methods
     """关于标签页。"""
 
     def build(self) -> ft.Control:

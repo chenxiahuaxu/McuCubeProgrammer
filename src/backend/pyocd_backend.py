@@ -123,7 +123,7 @@ def _extract_target_info(target: Target) -> TargetInfo:
     dap_idcode: str = ""
     try:
         dap_idcode = f"0x{target.dp.dpidr.idr:08X}"
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
         pass
 
     # 内核名称
@@ -132,7 +132,7 @@ def _extract_target_info(target: Target) -> TargetInfo:
         cores = list(target.cores.values())
         if cores:
             core_name = cores[0].name
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
         pass
 
     return TargetInfo(
@@ -280,7 +280,7 @@ class PyOCDBackend(BackendABC):
         # halt 一次确保 target.init() 完整执行
         try:
             self._session.target.halt()
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
             pass
 
         try:
@@ -322,7 +322,7 @@ class PyOCDBackend(BackendABC):
                 )
                 _log.info("Auto-reconnect succeeded (attempt %d)", attempt)
                 return self._session  # type: ignore[return-value]
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
                 _log.warning("Auto-reconnect attempt %d failed: %s", attempt, e)
                 if attempt < self._MAX_RECONNECT_RETRIES:
                     import time
@@ -462,7 +462,7 @@ class PyOCDBackend(BackendABC):
             return False
         try:
             return self._session.target.is_halted()
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
             return False
 
     def read_memory(self, address: int, size: int) -> bytes:
@@ -476,7 +476,7 @@ class PyOCDBackend(BackendABC):
                 f"读取内存失败 (0x{address:08X}, {size} bytes): {e}",
             ) from e
 
-    def get_rtos_threads(self, elf_path: str = "") -> list[dict]:
+    def get_rtos_threads(self, elf_path: str = "") -> list[dict]:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements  # OK: multi-register RTOS scan
         session = self._require_session()
 
         if not elf_path or not os.path.isfile(elf_path):
@@ -486,7 +486,7 @@ class PyOCDBackend(BackendABC):
         session.target.elf = elf_path
         sd = session.target.elf.symbol_decoder
 
-        class _Sym:
+        class _Sym:  # pylint: disable=too-few-public-methods
             def get_symbol_value(self, name: str) -> int | None:
                 sym_info = sd.get_symbol_for_name(name)
                 return sym_info.address if sym_info else None
@@ -511,7 +511,7 @@ class PyOCDBackend(BackendABC):
                         _log.info("RTOS detected: %s", name)
                         break
                     provider = None
-                except Exception:
+                except Exception:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
                     continue
 
             if provider is None:
@@ -530,39 +530,45 @@ class PyOCDBackend(BackendABC):
                 if was_running:
                     try:
                         session.target.resume()
-                    except Exception:
+                    except Exception:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
                         pass
             result: list[dict] = []
             states = {1: "Running", 2: "Ready", 3: "Blocked", 4: "Suspended", 5: "Deleted"}
             for thread in threads:
                 tcb_addr = thread.unique_id
-                try: sp = thread.get_stack_pointer()
-                except Exception: sp = None
-                try: s = thread.state
-                except Exception: s = None
-                try: p = thread.priority
-                except Exception: p = None
+                try:
+                    sp = thread.get_stack_pointer()
+                except Exception:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
+                    sp = None
+                try:
+                    s = thread.state
+                except Exception:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
+                    s = None
+                try:
+                    p = thread.priority
+                except Exception:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
+                    p = None
 
                 # 读取 TCB 中 pxStack (偏移 48, 4 字节) — 栈起始地址
                 stack_start = None
                 try:
                     pxstack_bytes = session.target.read_memory_block8(tcb_addr + 48, 4)
                     stack_start = pxstack_bytes[0] | (pxstack_bytes[1] << 8) | (pxstack_bytes[2] << 16) | (pxstack_bytes[3] << 24)
-                except Exception:
+                except Exception:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
                     pass
 
                 # 计算栈使用量
                 if stack_start and sp and tcb_addr:
                     stack_size = tcb_addr - stack_start
                     stack_used = tcb_addr - sp
-                    stack_free = stack_size - stack_used
+                    _stack_free = stack_size - stack_used
                     stack_info = f"{stack_used}B/{stack_size}B"
                 else:
                     stack_info = f"0x{sp:08X}" if sp else "—"
 
                 try:
                     is_cur = thread.is_current
-                except Exception:
+                except Exception:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
                     is_cur = False
 
                 result.append({
@@ -573,7 +579,7 @@ class PyOCDBackend(BackendABC):
                     "is_current": is_cur, "unique_id": tcb_addr,
                 })
             return result
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
             import traceback
             _log.error("get_rtos_threads failed:\n%s", traceback.format_exc())
             return []
