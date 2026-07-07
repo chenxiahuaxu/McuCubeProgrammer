@@ -39,10 +39,12 @@ class DebugTab:
         self._elf_symbols_data: list[dict] = []
         self._rtos_column: ft.Column | None = None
         self._rtos_auto: bool = False
+        self._rtos_history: dict[str, dict] = {}  # name → {history: [(ts, used)], stack_size: int}
 
         # ── 波形弹窗 ──
         self._waveform_dlg: WaveformDialog | None = None
         self._waveform_time_origin: float = 0.0
+        self._watch_interval: float = 0.5  # 采样刷新间隔（秒）
 
     def build(self) -> ft.Control:
         self._state_text = ft.Text(t("debugUnknown"), size=Font.Size.BODY, color=Colors.TEXT_SECONDARY)
@@ -55,6 +57,11 @@ class DebugTab:
             options=[ft.dropdown.Option("1", "u8"), ft.dropdown.Option("2", "u16"), ft.dropdown.Option("4", "u32"), ft.dropdown.Option("4f", "f32")])
         self._add_name = ft.TextField(hint_text=t("debugWatchName"), width=100, text_size=12)
         add_btn = ft.ElevatedButton(content=ft.Text(t("debugWatchAdd"), size=Font.Size.CAPTION), icon=ft.Icons.ADD, on_click=lambda _: self._add_watch())
+        self._interval_dd = ft.Dropdown(
+            width=90, dense=True, text_size=11, value="0.5",
+            options=[ft.dropdown.Option(v, f"{v}s") for v in ["0.1", "0.2", "0.5", "1.0", "2.0", "5.0"]],
+            on_select=self._on_interval_changed,
+        )
         self._watch_column = ft.Column(spacing=Spacing.XS)
         self._elf_path = ft.Text("", size=Font.Size.CAPTION, color=Colors.TEXT_DIM, no_wrap=True, tooltip="")
         self._elf_view_btn = ft.ElevatedButton(content=ft.Text(t("debugElfView")), icon=ft.Icons.LIST, disabled=True, on_click=lambda _: self._show_symbols())
@@ -77,7 +84,8 @@ class DebugTab:
                 card_container(content=ft.Column(controls=[
                     ft.Text(t("debugTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
                     ft.Row(controls=[ft.Container(width=8, height=8, border_radius=4, bgcolor=Colors.TEXT_DIM), self._state_text], spacing=Spacing.SM),
-                    ft.Row(controls=[self._toggle_btn, self._reset_btn], spacing=Spacing.MD),
+                    ft.Row(controls=[self._toggle_btn, self._reset_btn,
+                                      self._interval_dd], spacing=Spacing.MD),
                 ], spacing=Spacing.LG)),
                 # 3. 变量监控
                 card_container(content=ft.Column(controls=[
@@ -175,12 +183,18 @@ class DebugTab:
         self._rebuild_watch_list()
         self._close_wv_dlg()
 
+    def _on_interval_changed(self, e: ft.ControlEvent) -> None:
+        try:
+            self._watch_interval = float(e.control.value)
+        except (ValueError, AttributeError):
+            self._watch_interval = 0.5
+
     async def _watch_loop(self) -> None:
         while self._watch_running and self._watches:
             # 暂停时跳过采样
             if self._backend and self._backend.is_halted:
                 self._rebuild_watch_list()
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(self._watch_interval)
                 continue
             for w in self._watches:
                 if not self._backend or not self._backend.is_connected:
@@ -213,7 +227,7 @@ class DebugTab:
                 if len(w["history"]) > _HISTORY_MAX:
                     w["history"] = w["history"][-_HISTORY_MAX:]
             self._rebuild_watch_list()
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(self._watch_interval)
 
     # ── 波形弹窗 ─────────────────────────────────────────
     async def _show_waveform(self, name: str) -> None:
@@ -230,12 +244,33 @@ class DebugTab:
             name=name,
             get_history=lambda w=watch: w.get("history", []),
             time_origin=self._waveform_time_origin,
+            sample_interval=self._watch_interval,
         )
 
     def _close_wv_dlg(self) -> None:
         if self._waveform_dlg:
             self._waveform_dlg.close()
             self._waveform_dlg = None
+
+    async def _show_rtos_waveform(self, name: str) -> None:
+        """弹出 RTOS 任务 Stack 使用量波形"""
+        add_log("INFO", f"RTOS 波形请求: '{name}', keys: {list(self._rtos_history.keys())}")
+        h = self._rtos_history.get(name)
+        if not h:
+            add_log("WARN", f"RTOS 波形: 任务 '{name}' 无历史数据")
+            return
+
+        if self._waveform_dlg:
+            self._waveform_dlg.close()
+
+        self._waveform_dlg = WaveformDialog(self._page, self._loop)
+        await self._waveform_dlg.show(
+            name=f"{name} Stack",
+            get_history=lambda h=h: h["history"],
+            time_origin=0.0,
+            fixed_y=(0.0, float(h["stack_size"])),
+            sample_interval=self._watch_interval,
+        )
 
     # ── ELF 符号加载 ─────────────────────────────────────
     def _pick_elf(self) -> None:
@@ -332,12 +367,30 @@ class DebugTab:
                 for thread in threads:
                     marker = "* " if thread["is_current"] else "  "
                     color = Colors.ACCENT_COPPER if thread["is_current"] else Colors.TEXT_PRIMARY
+                    name = thread["name"]
+                    stack_str = thread.get("stack_usage", "0/0")
+
+                    # 解析并记录 stack 历史（格式: "84B/520B"）
+                    try:
+                        parts = stack_str.replace("B", "").split("/")
+                        stack_used = int(parts[0])
+                        stack_size = int(parts[1])
+                    except (ValueError, IndexError):
+                        stack_used, stack_size = 0, 0
+                    if stack_size > 0:
+                        h = self._rtos_history.setdefault(name, {"history": [], "stack_size": stack_size})
+                        h["history"].append((time.perf_counter(), stack_used))
+                        if len(h["history"]) > 600:
+                            h["history"] = h["history"][-600:]
+
                     self._rtos_column.controls.append(ft.Row(controls=[
-                        ft.Text(marker + thread["name"], width=140, size=Font.Size.CAPTION, color=color, font_family=Font.MONO),
+                        ft.Text(marker + name, width=140, size=Font.Size.CAPTION, color=color, font_family=Font.MONO),
                         ft.Text(thread["priority"], width=50, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY),
                         ft.Text(thread["state"], width=80, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY),
-                        ft.Text(thread["stack_usage"], width=100, size=Font.Size.CAPTION, color=Colors.TEXT_DIM, font_family=Font.MONO),
+                        ft.Text(stack_str, width=100, size=Font.Size.CAPTION, color=Colors.TEXT_DIM, font_family=Font.MONO),
                         ft.Text(thread.get("tcb", "—"), width=100, size=Font.Size.CAPTION, color=Colors.TEXT_DIM, font_family=Font.MONO),
+                        ft.IconButton(icon=ft.Icons.BAR_CHART, icon_size=14, icon_color=Colors.ACCENT_COPPER,
+                                      on_click=lambda e, n=name: self._loop.create_task(self._show_rtos_waveform(n))),
                     ], spacing=Spacing.SM))
             self._rtos_column.update()
         except Exception:
@@ -352,4 +405,4 @@ class DebugTab:
     async def _rtos_loop(self) -> None:
         while self._rtos_auto:
             self._refresh_rtos()
-            await asyncio.sleep(2)
+            await asyncio.sleep(self._watch_interval)

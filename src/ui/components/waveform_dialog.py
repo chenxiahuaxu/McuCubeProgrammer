@@ -62,6 +62,8 @@ class WaveformDialog:
         self._scroll_offset: float = 0.0
         self._auto_scroll: bool = True
         self._auto_y: bool = True
+        self._min_sec_div: float = 0.1
+        self._max_sec_div: float = 30.0  # 根据数据量动态调整
 
         # 控件
         self._dlg: ft.AlertDialog | None = None
@@ -77,6 +79,8 @@ class WaveformDialog:
         name: str,
         get_history: Callable[[], list[tuple[float, float]]],
         time_origin: float = 0.0,
+        fixed_y: tuple[float, float] | None = None,
+        sample_interval: float = 0.5,
     ) -> None:
         """显示波形弹窗。
 
@@ -84,18 +88,32 @@ class WaveformDialog:
             name: 标题中显示的名称
             get_history: 数据回调，返回 [(timestamp, value), ...]
             time_origin: 时间原点（用于计算相对时间）
+            fixed_y: 固定 Y 轴范围 (min, max)，为 None 时自动计算
+            sample_interval: 数据采样间隔（秒），决定 sec/Div 下限和步进
         """
         self._name = name
         self._get_history = get_history
         self._time_origin = time_origin
-        self._sec_div = 1.0
+        self._sample_interval = sample_interval
+        self._min_sec_div = max(0.1, sample_interval * 2)  # 至少 2 个采样点可见
+        self._sec_div = max(self._min_sec_div, 1.0)
         self._scroll_offset = 0.0
         self._auto_scroll = True
-        self._auto_y = True
+        if fixed_y is not None:
+            self._auto_y = False
+            self._fixed_y_min, self._fixed_y_max = fixed_y
+        else:
+            self._auto_y = True
+            self._fixed_y_min, self._fixed_y_max = 0.0, 1.0
 
         self._build_dialog()
 
-        # 启动自动刷新（后台数据更新时图表自动跟新）
+        # 固定 Y 轴时立即设范围
+        if fixed_y is not None and self._chart:
+            self._chart.min_y = fixed_y[0]
+            self._chart.max_y = fixed_y[1]
+
+        # 启动自动刷新
         self._loop.create_task(self._auto_refresh_loop())
 
         await self._refresh()
@@ -136,7 +154,8 @@ class WaveformDialog:
             on_change=lambda e: self._set_auto_scroll(e.control.value),
         )
         auto_y_cb = ft.Checkbox(
-            label=t("waveformAutoY"), value=True,
+            label=t("waveformAutoY"), value=self._auto_y,
+            disabled=not self._auto_y,  # fixed_y 时禁选
             on_change=lambda e: self._set_auto_y(e.control.value),
         )
         self._chart = fch.LineChart(
@@ -204,7 +223,8 @@ class WaveformDialog:
             total_sec = history[-1][0] - history[0][0]
             if total_sec > 0:
                 target = total_sec / _HORI_DIV
-                best = min(_STD_VALUES, key=lambda v: abs(v - target))
+                values = _STD_VALUES + [self._max_sec_div]
+                best = min(values, key=lambda v: abs(v - target))
                 self._sec_div = best
                 if self._sec_div_label:
                     self._sec_div_label.value = f"{best:.2f}s"
@@ -222,9 +242,9 @@ class WaveformDialog:
         dy = e.scroll_delta.y
         factor = 1.15
         if dy > 0:
-            self._sec_div = max(0.1, self._sec_div / factor)
+            self._sec_div = max(self._min_sec_div, self._sec_div / factor)
         else:
-            self._sec_div = min(30.0, self._sec_div * factor)
+            self._sec_div = min(self._max_sec_div, self._sec_div * factor)
 
         self._auto_scroll = False
         self._scroll_offset = old_center
@@ -263,6 +283,9 @@ class WaveformDialog:
             latest_x = (history[-1][0] - time_origin) if history else 0.0
             first_x = (history[0][0] - time_origin) if history else 0.0
             total_span = latest_x - first_x
+
+            # 根据数据量动态调整 sec/Div 上限
+            self._max_sec_div = max(10.0, total_span / _HORI_DIV)
 
             # 时间窗口
             if self._auto_scroll:
@@ -333,7 +356,7 @@ class WaveformDialog:
                 prevent_curve_over_shooting=True,
             )
 
-            # Auto Y
+            # Auto Y / Fixed Y
             if self._auto_y:
                 vals = [
                     val for ts, val in history
@@ -346,6 +369,9 @@ class WaveformDialog:
                     pad = span * 0.05 if span != 0 else 1.0
                     chart.min_y = dmin - pad
                     chart.max_y = dmax + pad
+            else:
+                chart.min_y = self._fixed_y_min
+                chart.max_y = self._fixed_y_max
 
             # data_series 后重设 min/max 防止图表自动缩放
             chart.data_series = [series]
