@@ -1,20 +1,21 @@
-"""调试标签页 — 目标控制 + 变量监控 + RTOS 线程。"""
+"""调试标签页 — 目标控制 + 变量监控 + RTOS 线程 + 波形图。"""
 
 from __future__ import annotations
 
 import asyncio
 import struct
+import time
 
 import flet as ft
-import flet.canvas as cv
 
 from src.backend.interface import BackendABC
 from src.i18n import t
+from src.ui.components.waveform_dialog import WaveformDialog
 from src.ui.theme import Colors, Font, Spacing, card_container, standard_divider
 from src.utils.elf_parser import parse_elf_symbols
 from src.utils.logger import add_log
 
-_HISTORY_MAX = 300
+_HISTORY_MAX = 600
 
 
 class DebugTab:
@@ -29,14 +30,6 @@ class DebugTab:
         self._watches: list[dict] = []
         self._watch_running: bool = False
         self._watch_column: ft.Column | None = None
-        self._trend_dlg: ft.AlertDialog | None = None
-        self._trend_name: str = ""
-        self._trend_canvas: cv.Canvas | None = None
-        self._trend_info: ft.Text | None = None
-        self._trend_scroll_row: ft.Row | None = None
-        self._trend_locked: bool = True  # 默认锁定 → 自动滚到最新
-        self._trend_lock_btn: ft.IconButton | None = None
-        self._trend_zoom: float = 1.0  # 缩放倍数: 0.15(全数据) ~ 3.0(放大)
         self._add_addr: ft.TextField | None = None
         self._add_size: ft.Dropdown | None = None
         self._add_name: ft.TextField | None = None
@@ -44,9 +37,12 @@ class DebugTab:
         self._elf_full_path: str = ""
         self._elf_view_btn: ft.ElevatedButton | None = None
         self._elf_symbols_data: list[dict] = []
-        # chart canvas removed — trend shown via dialog per watch
         self._rtos_column: ft.Column | None = None
         self._rtos_auto: bool = False
+
+        # ── 波形弹窗 ──
+        self._waveform_dlg: WaveformDialog | None = None
+        self._waveform_time_origin: float = 0.0
 
     def build(self) -> ft.Control:
         self._state_text = ft.Text(t("debugUnknown"), size=Font.Size.BODY, color=Colors.TEXT_SECONDARY)
@@ -60,7 +56,6 @@ class DebugTab:
         self._add_name = ft.TextField(hint_text=t("debugWatchName"), width=100, text_size=12)
         add_btn = ft.ElevatedButton(content=ft.Text(t("debugWatchAdd"), size=Font.Size.CAPTION), icon=ft.Icons.ADD, on_click=lambda _: self._add_watch())
         self._watch_column = ft.Column(spacing=Spacing.XS)
-        # trend chart is built per-watch in dialog
         self._elf_path = ft.Text("", size=Font.Size.CAPTION, color=Colors.TEXT_DIM, no_wrap=True, tooltip="")
         self._elf_view_btn = ft.ElevatedButton(content=ft.Text(t("debugElfView")), icon=ft.Icons.LIST, disabled=True, on_click=lambda _: self._show_symbols())
         self._elf_symbols_data: list[dict] = []
@@ -68,7 +63,7 @@ class DebugTab:
 
         return ft.ListView(
             controls=[
-                # 1. ELF 符号表（最前面——调试基础）
+                # 1. ELF 符号表
                 card_container(content=ft.Column(controls=[
                     ft.Text(t("debugElfTitle"), size=Font.Size.HEADING, weight=600, color=Colors.ACCENT_COPPER),
                     ft.Row(controls=[
@@ -170,13 +165,15 @@ class DebugTab:
                 ft.Text(f"0x{w['addr']:08X}", width=110, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
                 ft.Text(w.get("value", "—"), size=Font.Size.CAPTION, color=Colors.ACCENT_PRIMARY, font_family=Font.MONO),
                 ft.IconButton(icon=ft.Icons.BAR_CHART, icon_size=14, icon_color=Colors.ACCENT_COPPER,
-                              on_click=lambda e, n=name: self._loop.create_task(self._show_trend(n))),
+                              on_click=lambda e, n=name: self._loop.create_task(self._show_waveform(n))),
             ], spacing=Spacing.SM))
         self._watch_column.update()
 
     def _clear_watches(self) -> None:
         self._watches.clear()
+        self._waveform_time_origin = 0.0
         self._rebuild_watch_list()
+        self._close_wv_dlg()
 
     async def _watch_loop(self) -> None:
         while self._watch_running and self._watches:
@@ -205,168 +202,40 @@ class DebugTab:
                         w["val_num"] = 0
                 except Exception:
                     w["value"] = "err"; w["val_num"] = None
-            # 记录历史（用于趋势弹窗）
+            # 记录历史（时间戳 + 值）
             for w in self._watches:
                 if not w.get("history"):
                     w["history"] = []
                 v = w.get("val_num")
                 if v is not None:
-                    w["history"].append(v)
+                    ts = time.perf_counter()
+                    w["history"].append((ts, v))
                 if len(w["history"]) > _HISTORY_MAX:
                     w["history"] = w["history"][-_HISTORY_MAX:]
             self._rebuild_watch_list()
-            # 自动刷新趋势弹窗（暂停时不绘制）
-            if self._trend_name and self._trend_canvas and not self._backend.is_halted:
-                await self._refresh_waveform_data()
             await asyncio.sleep(0.5)
 
-    async def _show_trend(self, name: str) -> None:
-        """弹出波形图对话框，Canvas 和 Info 只创建一次，之后原位刷新。"""
-        self._trend_name = name
-
-        self._trend_info = ft.Text(
-            f"{name}:  —", size=Font.Size.CAPTION,
-            color=Colors.TEXT_DIM, font_family=Font.MONO)
-        self._trend_canvas = cv.Canvas(shapes=[], width=200, height=260)
-
-        self._trend_scroll_row = ft.Row(
-            [self._trend_canvas],
-            scroll=ft.ScrollMode.ADAPTIVE,
-            height=272,
-        )
-        content = ft.Column([
-            self._trend_info,
-            ft.Divider(height=6),
-            ft.GestureDetector(content=self._trend_scroll_row, on_scroll=self._on_canvas_scroll),
-        ], spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO, width=560, height=400)
-
-        self._trend_locked = True
-        self._trend_lock_btn = ft.IconButton(
-            icon=ft.Icons.LOCK, icon_size=18,
-            icon_color=Colors.ACCENT_COPPER,
-            tooltip="锁定 → 自动跟踪最新",
-            on_click=lambda _: self._toggle_lock(),
-        )
-
-        self._trend_dlg = ft.AlertDialog(
-            modal=True,
-            open=True,
-            title=ft.Text(f"Waveform — {name}"),
-            content=content,
-            actions=[
-                self._trend_lock_btn,
-                ft.ElevatedButton(content=ft.Text("Close"), on_click=lambda _: self._close_trend()),
-            ],
-        )
-        self._page.show_dialog(self._trend_dlg)
-        # 首次填充数据（必须在 dialog 添加到 page 之后）
-        await self._refresh_waveform_data()
-
-    async def _refresh_waveform_data(self) -> None:
-        """原位更新全部历史数据，画布宽度自动适配，滚动到最新。"""
-        if not self._trend_name or not self._trend_canvas:
-            return
-        watch = next((w for w in self._watches if w["name"] == self._trend_name), None)
+    # ── 波形弹窗 ─────────────────────────────────────────
+    async def _show_waveform(self, name: str) -> None:
+        """弹出单变量波形图（复用 WaveformDialog）"""
+        watch = next((w for w in self._watches if w["name"] == name), None)
         if not watch:
             return
-        vals = [v for v in watch.get("history", []) if isinstance(v, (int, float))]
 
-        H = 260; PAD = 28
-        STEP = max(1, int(12 * self._trend_zoom))  # 滚轮缩放间距
-        COPPER = "#D99A5A"; GREEN = "#26A641"
-        shapes: list[cv.Shape] = []
+        if self._waveform_dlg:
+            self._waveform_dlg.close()
 
-        def y_of(v, vmin, span):
-            return PAD + (H - 2 * PAD) * (1 - (v - vmin) / span)
+        self._waveform_dlg = WaveformDialog(self._page, self._loop)
+        await self._waveform_dlg.show(
+            name=name,
+            get_history=lambda w=watch: w.get("history", []),
+            time_origin=self._waveform_time_origin,
+        )
 
-        if vals:
-            vmax = max(vals); vmin = min(vals)
-            span = vmax - vmin if vmax != vmin else 1
-            if self._trend_info:
-                self._trend_info.value = (
-                    f"{self._trend_name}:  min={vmin}  max={vmax}  cur={vals[-1]}  "
-                    f"[zoom:{int(100 / self._trend_zoom)}%]")
-            bottom_y = y_of(vmin, vmin, span)
-            n = len(vals)
-
-            # 画布宽度 = 全部历史点 × 固定间距
-            W = max(200, STEP * (n - 1) + 2 * PAD)
-
-            # 1. 边框
-            shapes.append(cv.Rect(PAD, PAD, W - 2 * PAD, H - 2 * PAD,
-                paint=ft.Paint(color="#30D99A5A", stroke_width=1)))
-            # 2. 网格线
-            grid_paint = ft.Paint(color="#20D99A5A", stroke_width=0.5)
-            for pct in [0.25, 0.5, 0.75]:
-                y = PAD + (H - 2 * PAD) * (1 - pct)
-                shapes.append(cv.Line(PAD, y, W - PAD, y, paint=grid_paint))
-            # 3. 全部点的像素坐标
-            pts = [(PAD + i * STEP, y_of(v, vmin, span)) for i, v in enumerate(vals)]
-
-            if n >= 2:
-                # 4. 填充
-                fill_path = [cv.Path.MoveTo(pts[0][0], pts[0][1])]
-                for px, py in pts[1:]:
-                    fill_path.append(cv.Path.LineTo(px, py))
-                fill_path.append(cv.Path.LineTo(pts[-1][0], bottom_y))
-                fill_path.append(cv.Path.LineTo(pts[0][0], bottom_y))
-                fill_path.append(cv.Path.Close())
-                shapes.append(cv.Path(elements=fill_path,
-                    paint=ft.Paint(color="#26D99A5A", style=ft.PaintingStyle.FILL)))
-                # 5. 连线
-                shapes.append(cv.Points(points=pts, point_mode=cv.PointMode.POLYGON,
-                    paint=ft.Paint(color=GREEN, stroke_width=2, anti_alias=True)))
-                # 6. 圆点（每个数据点）
-                for i in range(0, n):
-                    px, py = pts[i]
-                    shapes.append(cv.Circle(px, py, 3,
-                        paint=ft.Paint(color=GREEN, style=ft.PaintingStyle.FILL)))
-            elif n == 1:
-                px, py = pts[0]
-                shapes.append(cv.Circle(px, py, 4,
-                    paint=ft.Paint(color=GREEN, style=ft.PaintingStyle.FILL)))
-
-        self._trend_canvas.shapes = shapes
-        self._trend_canvas.width = max(200, STEP * (len(vals) - 1) + 2 * PAD) if vals else 200
-        self._trend_canvas.update()
-        # 滚到最新（仅锁定状态）
-        if self._trend_scroll_row and vals and self._trend_locked:
-            await self._trend_scroll_row.scroll_to(offset=-1, duration=0)
-        if self._trend_info:
-            if not vals:
-                self._trend_info.value = f"{self._trend_name}:  0 samples"
-            self._trend_info.update()
-
-    def _close_trend(self) -> None:
-        """关闭趋势弹窗并清空自动刷新状态。"""
-        self._trend_name = ""
-        if self._trend_dlg:
-            self._trend_dlg.open = False
-            self._trend_dlg.update()
-            self._trend_dlg = None
-        self._trend_canvas = None
-        self._trend_info = None
-        self._trend_lock_btn = None
-        self._trend_zoom = 1.0
-        if self._page:
-            self._page.update()
-
-    def _toggle_lock(self) -> None:
-        """切换锁定状态：锁定→自动跟踪最新数据，解锁→停留在当前视图。"""
-        self._trend_locked = not self._trend_locked
-        if self._trend_lock_btn:
-            self._trend_lock_btn.icon = ft.Icons.LOCK if self._trend_locked else ft.Icons.LOCK_OPEN
-            self._trend_lock_btn.tooltip = "锁定 → 自动跟踪最新" if self._trend_locked else "解锁 → 自由浏览历史"
-            self._trend_lock_btn.update()
-
-    def _on_canvas_scroll(self, e: ft.ScrollEvent) -> None:
-        """鼠标滚轮缩放画布: 上滚放大(少点数), 下滚缩小(多点数→最多全部)。"""
-        d = e.scroll_delta.y
-        if d < 0:
-            self._trend_zoom = min(3.0, self._trend_zoom + 0.05)   # 上滚放大
-        elif d > 0:
-            self._trend_zoom = max(0.15, self._trend_zoom - 0.05)  # 下滚缩小
-        self._loop.create_task(self._refresh_waveform_data())
+    def _close_wv_dlg(self) -> None:
+        if self._waveform_dlg:
+            self._waveform_dlg.close()
+            self._waveform_dlg = None
 
     # ── ELF 符号加载 ─────────────────────────────────────
     def _pick_elf(self) -> None:

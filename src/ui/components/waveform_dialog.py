@@ -1,0 +1,304 @@
+"""可复用的单通道波形弹窗 — 示波器风格交互。
+
+通过数据回调解耦，可在任何数据源上复用：
+    dlg = WaveformDialog(page, loop)
+    await dlg.show("变量名", get_history=lambda: my_data)
+    dlg.close()
+"""
+
+from __future__ import annotations
+
+import asyncio
+from typing import Callable
+
+import flet as ft
+import flet_charts as fch
+
+from src.ui.theme import Colors, Font, Spacing
+
+_HORI_DIV = 10
+_STD_VALUES = [0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0]
+
+
+class WaveformDialog:
+    """单通道波形弹窗。
+
+    特性：
+    - sec/Div 工具栏调整时间分辨率
+    - 滚轮缩放（不影响时间轴位置）
+    - 水平滑块平移（仅在数据超出可视范围时显示，不能拖到数据之外）
+    - Auto-scroll / Auto Y
+    - Fit 按钮自适应
+    """
+
+    def __init__(self, page: ft.Page, loop: asyncio.AbstractEventLoop):
+        self._page = page
+        self._loop = loop
+
+        # 状态
+        self._name: str = ""
+        self._get_history: Callable[[], list[tuple[float, float]]] | None = None
+        self._time_origin: float = 0.0
+        self._sec_div: float = 1.0
+        self._scroll_offset: float = 0.0
+        self._auto_scroll: bool = True
+        self._auto_y: bool = True
+
+        # 控件
+        self._dlg: ft.AlertDialog | None = None
+        self._chart: fch.LineChart | None = None
+        self._sec_div_label: ft.Text | None = None
+        self._slider: ft.Slider | None = None
+
+    # ── 公开 API ───────────────────────────────────────────
+
+    async def show(
+        self,
+        name: str,
+        get_history: Callable[[], list[tuple[float, float]]],
+        time_origin: float = 0.0,
+    ) -> None:
+        """显示波形弹窗。
+
+        Args:
+            name: 标题中显示的名称
+            get_history: 数据回调，返回 [(timestamp, value), ...]
+            time_origin: 时间原点（用于计算相对时间）
+        """
+        self._name = name
+        self._get_history = get_history
+        self._time_origin = time_origin
+        self._sec_div = 1.0
+        self._scroll_offset = 0.0
+        self._auto_scroll = True
+        self._auto_y = True
+
+        self._build_dialog()
+
+    def close(self) -> None:
+        """关闭弹窗。"""
+        self._name = ""
+        self._get_history = None
+        if self._dlg:
+            self._dlg.open = False
+            if self._page:
+                self._page.update()
+            self._dlg = None
+        self._chart = None
+        self._sec_div_label = None
+        self._slider = None
+
+    @property
+    def is_open(self) -> bool:
+        return self._dlg is not None
+
+    # ── 构建 ───────────────────────────────────────────────
+
+    def _build_dialog(self) -> None:
+        self._sec_div_label = ft.Text(
+            "1.0s", size=Font.Size.CAPTION, color=Colors.ACCENT_PRIMARY,
+        )
+        auto_scroll_cb = ft.Checkbox(
+            label="Auto-scroll", value=True,
+            on_change=lambda e: self._set_auto_scroll(e.control.value),
+        )
+        auto_y_cb = ft.Checkbox(
+            label="Auto Y", value=True,
+            on_change=lambda e: self._set_auto_y(e.control.value),
+        )
+        self._chart = fch.LineChart(
+            width=540, height=260,
+            interactive=False, data_series=[],
+            min_x=0, max_x=10, min_y=-1, max_y=1,
+        )
+        self._slider = ft.Slider(
+            min=0, max=1_000_000, value=0,
+            visible=False,
+            on_change=self._on_slider,
+        )
+
+        content = ft.Column(controls=[
+            ft.Row(controls=[
+                ft.Text("sec/Div:", size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY),
+                self._sec_div_label,
+                auto_scroll_cb,
+                auto_y_cb,
+                ft.ElevatedButton(
+                    content=ft.Text("Fit", size=Font.Size.CAPTION),
+                    on_click=lambda _: self._on_fit(),
+                ),
+            ], spacing=Spacing.SM, wrap=True),
+            ft.Container(
+                content=ft.GestureDetector(
+                    content=self._chart,
+                    on_scroll=self._on_scroll,
+                ),
+                width=540, height=260,
+                clip_behavior=ft.ClipBehavior.HARD_EDGE,
+            ),
+            self._slider,
+        ], spacing=Spacing.SM, width=560)
+
+        self._dlg = ft.AlertDialog(
+            modal=True,
+            open=True,
+            title=ft.Text(f"Waveform — {self._name}"),
+            content=content,
+            actions=[
+                ft.ElevatedButton(
+                    content=ft.Text("Close"),
+                    on_click=lambda _: self.close(),
+                ),
+            ],
+        )
+        self._page.show_dialog(self._dlg)
+        self._loop.create_task(self._refresh())
+
+    # ── 事件处理 ───────────────────────────────────────────
+
+    def _set_auto_scroll(self, v: bool) -> None:
+        self._auto_scroll = v
+        self._loop.create_task(self._refresh())
+
+    def _set_auto_y(self, v: bool) -> None:
+        self._auto_y = v
+        self._loop.create_task(self._refresh())
+
+    def _on_fit(self) -> None:
+        history = self._get_history() if self._get_history else []
+        if len(history) >= 2:
+            total_sec = history[-1][0] - history[0][0]
+            if total_sec > 0:
+                target = total_sec / _HORI_DIV
+                best = min(_STD_VALUES, key=lambda v: abs(v - target))
+                self._sec_div = best
+                if self._sec_div_label:
+                    self._sec_div_label.value = f"{best:.2f}s"
+                    self._sec_div_label.update()
+                self._loop.create_task(self._refresh())
+
+    def _on_scroll(self, e: ft.ScrollEvent) -> None:
+        """滚轮缩放 — 保持视图中心不动。"""
+        # 保存当前中心
+        if self._chart:
+            old_center = (self._chart.min_x + self._chart.max_x) / 2
+        else:
+            old_center = self._scroll_offset
+
+        dy = e.scroll_delta.y
+        factor = 1.15
+        if dy > 0:
+            self._sec_div = max(0.1, self._sec_div / factor)
+        else:
+            self._sec_div = min(30.0, self._sec_div * factor)
+
+        self._auto_scroll = False
+        self._scroll_offset = old_center
+
+        if self._sec_div_label:
+            self._sec_div_label.value = f"{self._sec_div:.2f}s"
+            self._sec_div_label.update()
+        self._loop.create_task(self._refresh())
+
+    def _on_slider(self, e: ft.ControlEvent) -> None:
+        try:
+            self._scroll_offset = float(e.control.value)
+        except (ValueError, AttributeError):
+            self._scroll_offset = 0.0
+        self._auto_scroll = False
+        self._loop.create_task(self._refresh())
+
+    # ── 刷新 ───────────────────────────────────────────────
+
+    async def _refresh(self) -> None:
+        if not self._chart or not self._get_history:
+            return
+
+        history = self._get_history()
+        if not history:
+            return
+
+        time_origin = self._time_origin or history[0][0]
+        chart = self._chart
+        visible_sec = self._sec_div * _HORI_DIV
+        half_visible = visible_sec / 2
+        latest_x = (history[-1][0] - time_origin) if history else 0.0
+        first_x = (history[0][0] - time_origin) if history else 0.0
+        total_span = latest_x - first_x
+
+        # 时间窗口
+        if self._auto_scroll:
+            chart.max_x = latest_x
+            chart.min_x = max(0, latest_x - visible_sec)
+            self._scroll_offset = max(half_visible, latest_x - half_visible)
+        else:
+            center = max(half_visible, self._scroll_offset)
+            chart.min_x = max(0, center - half_visible)
+            chart.max_x = center + half_visible
+
+        # ── 窗口裁剪到数据范围内，避免空画布 ──
+        # 右边不超出最新数据
+        if chart.max_x > latest_x:
+            delta = chart.max_x - latest_x
+            chart.max_x = latest_x
+            chart.min_x = max(0, chart.min_x - delta)
+        # 左边不超出最早数据
+        if chart.min_x < first_x:
+            chart.min_x = first_x
+            chart.max_x = first_x + visible_sec
+        # 确保最小值合法
+        if chart.min_x < 0:
+            chart.min_x = 0
+            chart.max_x = visible_sec
+
+        # 全量数据点
+        points = [
+            fch.LineChartDataPoint(x=ts - time_origin, y=val)
+            for ts, val in history
+            if val is not None
+        ]
+        if not points:
+            return
+
+        series = fch.LineChartData(
+            points=points,
+            stroke_width=2,
+            color="#26A641",
+            curved=False,
+            prevent_curve_over_shooting=True,
+        )
+
+        # Auto Y
+        if self._auto_y:
+            vals = [
+                val for ts, val in history
+                if val is not None
+                and chart.min_x <= (ts - time_origin) <= chart.max_x
+            ]
+            if vals:
+                dmin, dmax = min(vals), max(vals)
+                span = dmax - dmin
+                pad = span * 0.05 if span != 0 else 1.0
+                chart.min_y = dmin - pad
+                chart.max_y = dmax + pad
+
+        # data_series 后重设 min/max 防止图表自动缩放
+        chart.data_series = [series]
+        chart.min_x = chart.min_x
+        chart.max_x = chart.max_x
+        chart.min_y = chart.min_y
+        chart.max_y = chart.max_y
+        chart.update()
+
+        # 滑块可见性与范围（约束在数据区间内，先设值再设范围避免越界）
+        if self._slider:
+            needs_slider = total_span > visible_sec
+            self._slider.visible = needs_slider
+            if needs_slider:
+                s_min = first_x + half_visible
+                s_max = max(s_min, latest_x - half_visible)
+                sv = s_max if self._auto_scroll else max(s_min, min(s_max, self._slider.value))
+                self._slider.value = sv
+                self._slider.min = s_min
+                self._slider.max = s_max
+            self._slider.update()

@@ -27,6 +27,7 @@ classifiers = [
 ]
 dependencies = [
     "flet>=0.28.0",
+    "flet-charts>=0.2.0",
     "pyocd>=0.44.0",
     "pyperclip>=1.9.0",
     "flet-l10n>=0.1.3",
