@@ -518,20 +518,24 @@ class PyOCDBackend(BackendABC):
                 return []
 
             # 暂停目标以确保稳定读取
-            was_running = session.target.is_running()
-            if was_running:
-                session.target.halt()
-
             try:
-                provider.read_from_target = True
-                provider.update_threads()
-                threads = provider.get_threads()
-            finally:
+                was_running = session.target.is_running()
                 if was_running:
-                    try:
-                        session.target.resume()
-                    except Exception:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
-                        pass
+                    session.target.halt()
+
+                try:
+                    provider.read_from_target = True
+                    provider.update_threads()
+                    threads = provider.get_threads()
+                finally:
+                    if was_running:
+                        try:
+                            session.target.resume()
+                        except Exception:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
+                            pass
+            except pyocd_exc.TransferError:
+                _log.debug("SWD transfer error during RTOS thread read, skipping this cycle")
+                return []
             result: list[dict] = []
             states = {1: "Running", 2: "Ready", 3: "Blocked", 4: "Suspended", 5: "Deleted"}
             for thread in threads:
@@ -581,7 +585,7 @@ class PyOCDBackend(BackendABC):
             return result
         except Exception:  # pylint: disable=broad-exception-caught  # OK: backend error boundary
             import traceback
-            _log.error("get_rtos_threads failed:\n%s", traceback.format_exc())
+            _log.warning("get_rtos_threads failed:\n%s", traceback.format_exc())
             return []
 
     # ── SWO ─────────────────────────────────────────────
