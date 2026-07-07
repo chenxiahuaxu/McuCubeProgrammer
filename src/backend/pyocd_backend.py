@@ -560,12 +560,17 @@ class PyOCDBackend(BackendABC):
                 else:
                     stack_info = f"0x{sp:08X}" if sp else "—"
 
+                try:
+                    is_cur = thread.is_current
+                except Exception:
+                    is_cur = False
+
                 result.append({
                     "name": thread.name, "priority": str(p) if p is not None else "—",
                     "state": states.get(s, str(s)) if s is not None else "—",
                     "stack_usage": stack_info,
                     "tcb": f"0x{tcb_addr:08X}" if tcb_addr else "—",
-                    "is_current": thread.is_current, "unique_id": tcb_addr,
+                    "is_current": is_cur, "unique_id": tcb_addr,
                 })
             return result
         except Exception:
