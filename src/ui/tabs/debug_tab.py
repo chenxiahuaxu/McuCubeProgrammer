@@ -36,6 +36,7 @@ class DebugTab:
         self._trend_scroll_row: ft.Row | None = None
         self._trend_locked: bool = True  # 默认锁定 → 自动滚到最新
         self._trend_lock_btn: ft.IconButton | None = None
+        self._trend_zoom: float = 1.0  # 缩放倍数: 0.15(全数据) ~ 3.0(放大)
         self._add_addr: ft.TextField | None = None
         self._add_size: ft.Dropdown | None = None
         self._add_name: ft.TextField | None = None
@@ -236,7 +237,7 @@ class DebugTab:
         content = ft.Column([
             self._trend_info,
             ft.Divider(height=6),
-            self._trend_scroll_row,
+            ft.GestureDetector(content=self._trend_scroll_row, on_scroll=self._on_canvas_scroll),
         ], spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO, width=560, height=400)
 
         self._trend_locked = True
@@ -270,7 +271,8 @@ class DebugTab:
             return
         vals = [v for v in watch.get("history", []) if isinstance(v, (int, float))]
 
-        H = 260; PAD = 28; STEP = 12
+        H = 260; PAD = 28
+        STEP = max(1, int(12 * self._trend_zoom))  # 滚轮缩放间距
         COPPER = "#D99A5A"; GREEN = "#26A641"
         shapes: list[cv.Shape] = []
 
@@ -281,7 +283,9 @@ class DebugTab:
             vmax = max(vals); vmin = min(vals)
             span = vmax - vmin if vmax != vmin else 1
             if self._trend_info:
-                self._trend_info.value = f"{self._trend_name}:  min={vmin}  max={vmax}  cur={vals[-1]}"
+                self._trend_info.value = (
+                    f"{self._trend_name}:  min={vmin}  max={vmax}  cur={vals[-1]}  "
+                    f"[zoom:{int(100 / self._trend_zoom)}%]")
             bottom_y = y_of(vmin, vmin, span)
             n = len(vals)
 
@@ -343,6 +347,7 @@ class DebugTab:
         self._trend_canvas = None
         self._trend_info = None
         self._trend_lock_btn = None
+        self._trend_zoom = 1.0
         if self._page:
             self._page.update()
 
@@ -353,6 +358,15 @@ class DebugTab:
             self._trend_lock_btn.icon = ft.Icons.LOCK if self._trend_locked else ft.Icons.LOCK_OPEN
             self._trend_lock_btn.tooltip = "锁定 → 自动跟踪最新" if self._trend_locked else "解锁 → 自由浏览历史"
             self._trend_lock_btn.update()
+
+    def _on_canvas_scroll(self, e: ft.ScrollEvent) -> None:
+        """鼠标滚轮缩放画布: 上滚放大(少点数), 下滚缩小(多点数→最多全部)。"""
+        d = e.scroll_delta.y
+        if d < 0:
+            self._trend_zoom = min(3.0, self._trend_zoom + 0.05)   # 上滚放大
+        elif d > 0:
+            self._trend_zoom = max(0.15, self._trend_zoom - 0.05)  # 下滚缩小
+        self._loop.create_task(self._refresh_waveform_data())
 
     # ── ELF 符号加载 ─────────────────────────────────────
     def _pick_elf(self) -> None:
