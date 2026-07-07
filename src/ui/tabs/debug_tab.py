@@ -310,25 +310,51 @@ class DebugTab:
 
     async def _do_show_symbols(self) -> None:
         try:
-            rows: list[ft.Control] = []
-            for s in self._elf_symbols_data[:200]:
-                rows.append(ft.Row(controls=[
-                    ft.Text(s["name"], width=200, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
-                    ft.Text(f"0x{s['addr']:08X}", width=120, size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY, font_family=Font.MONO),
-                    ft.Text(str(s["size"]), width=60, size=Font.Size.CAPTION, color=Colors.TEXT_DIM),
-                    ft.IconButton(icon=ft.Icons.ADD, icon_size=14, icon_color=Colors.ACCENT_PRIMARY,
-                                  on_click=lambda e, a=s["addr"], n=s["name"], sz=s["size"]: self._watch_symbol(a, n, sz)),
-                ], spacing=Spacing.SM))
-            content_col = ft.Column(controls=rows, spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO, width=560, height=460)
+            all_symbols = self._elf_symbols_data
+
+            rows_col = ft.Column(spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO, width=560, height=400)
+
+            def _build_rows(keyword: str = "") -> None:
+                rows_col.controls.clear()
+                kw = keyword.strip().lower()
+                filtered = [s for s in all_symbols
+                            if not kw or kw in s["name"].lower()
+                            or kw in f"0x{s['addr']:08X}".lower()]
+                count_label.value = f"{len(filtered)} / {len(all_symbols)}"
+                for s in filtered[:300]:
+                    rows_col.controls.append(ft.Row(controls=[
+                        ft.Text(s["name"], width=200, size=Font.Size.CAPTION, color=Colors.TEXT_PRIMARY, font_family=Font.MONO),
+                        ft.Text(f"0x{s['addr']:08X}", width=120, size=Font.Size.CAPTION, color=Colors.TEXT_SECONDARY, font_family=Font.MONO),
+                        ft.Text(str(s["size"]), width=60, size=Font.Size.CAPTION, color=Colors.TEXT_DIM),
+                        ft.IconButton(icon=ft.Icons.ADD, icon_size=14, icon_color=Colors.ACCENT_PRIMARY,
+                                      on_click=lambda e, a=s["addr"], n=s["name"], sz=s["size"]: self._watch_symbol(a, n, sz)),
+                    ], spacing=Spacing.SM))
+                try:
+                    rows_col.update()
+                except Exception:
+                    pass  # 控件尚未挂载到页面，跳过
+
+            count_label = ft.Text("", size=Font.Size.CAPTION, color=Colors.TEXT_DIM)
+            search = ft.TextField(
+                hint_text=t("debugSearchSymbol"), width=560, text_size=13, dense=True,
+                on_change=lambda e: _build_rows(e.control.value),
+            )
+
+            _build_rows()
+
+            content_col = ft.Column(controls=[
+                ft.Row(controls=[search, count_label], spacing=Spacing.SM),
+                rows_col,
+            ], spacing=Spacing.SM, width=560)
+
             dlg = ft.AlertDialog(
                 modal=True,
                 open=True,
-                title=ft.Text(f"ELF Symbols ({len(self._elf_symbols_data)})"),
+                title=ft.Text(f"ELF Symbols ({len(all_symbols)})"),
                 content=content_col,
                 actions=[ft.ElevatedButton(content=ft.Text("Close"), on_click=lambda _: self._close_dialog(dlg))],
             )
             self._page.show_dialog(dlg)
-            add_log("INFO", "符号弹窗已设置")
         except Exception as e:
             add_log("ERROR", f"弹窗失败: {e}")
 

@@ -129,6 +129,7 @@
   "debugElfTitle": "ELF 符号表",
   "debugElfLoad": "加载",
   "debugElfView": "查看符号",
+  "debugSearchSymbol": "搜索符号名或地址...",
   "debugChartTitle": "内存趋势",
   "debugRtosTitle": "RTOS 任务",
   "debugRtosNone": "未检测到 RTOS",

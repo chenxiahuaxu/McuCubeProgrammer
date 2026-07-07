@@ -128,6 +128,7 @@
   "debugElfTitle": "ELF Symbols",
   "debugElfLoad": "Load",
   "debugElfView": "View Symbols",
+  "debugSearchSymbol": "Search symbol name or address...",
   "debugChartTitle": "Memory Trend",
   "debugRtosTitle": "RTOS Tasks",
   "debugRtosNone": "No RTOS detected or not supported",
