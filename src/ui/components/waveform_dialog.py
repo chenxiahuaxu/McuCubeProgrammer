@@ -176,18 +176,13 @@ class WaveformDialog:
                 self._sec_div_label,
                 auto_scroll_cb,
                 auto_y_cb,
-                ft.ElevatedButton(
-                    content=ft.Text(t("waveformFit"), size=Font.Size.CAPTION),
-                    on_click=lambda _: self._on_fit(),
-                ),
             ], spacing=Spacing.SM, wrap=True),
             ft.Container(
                 content=ft.GestureDetector(
                     content=self._chart,
                     on_scroll=self._on_scroll,
                 ),
-                width=540, height=300,
-                clip_behavior=ft.ClipBehavior.HARD_EDGE,
+                width=560, height=300,
             ),
             self._slider,
         ], spacing=Spacing.SM, width=560)
@@ -198,6 +193,10 @@ class WaveformDialog:
             title=ft.Text(t("waveformTitle", name=self._name)),
             content=content,
             actions=[
+                ft.ElevatedButton(
+                    content=ft.Text(t("waveformFit"), size=Font.Size.CAPTION),
+                    on_click=lambda _: self._on_fit(),
+                ),
                 ft.ElevatedButton(
                     content=ft.Text(t("waveformClose")),
                     on_click=lambda _: self.close(),
@@ -407,36 +406,50 @@ class WaveformDialog:
 
     @staticmethod
     def _build_time_axis(x_min: float, x_max: float) -> fch.ChartAxis:
-        """生成横轴标签 — 5 段对齐到整数的刻度"""
+        """生成横轴标签 — 对齐整数刻度，始终包含首尾"""
         span = x_max - x_min
         if span <= 0:
             return fch.ChartAxis(show_labels=False)
-        step = _nice_interval(span, 5)
-        start = (int(x_min / step) + 1) * step if step > 0 else x_min
-        labels = []
-        t = start
-        while t <= x_max:
+        step = _nice_interval(span, 8)
+        labels: list[fch.ChartAxisLabel] = []
+        labels.append(fch.ChartAxisLabel(
+            value=x_min,
+            label=ft.Text(f"{x_min:.1f}s", size=10, color=Colors.TEXT_DIM),
+        ))
+        t = (int(x_min / step) + 1) * step if step > 0 else x_min + step
+        while t < x_max:
             labels.append(fch.ChartAxisLabel(
                 value=t,
                 label=ft.Text(f"{t:.1f}s", size=10, color=Colors.TEXT_DIM),
             ))
             t += step
+        labels.append(fch.ChartAxisLabel(
+            value=x_max,
+            label=ft.Text(f"{x_max:.1f}s", size=10, color=Colors.TEXT_DIM),
+        ))
         return fch.ChartAxis(labels=labels, label_size=30)
 
     @staticmethod
     def _build_value_axis(y_min: float, y_max: float) -> fch.ChartAxis:
-        """生成纵轴标签 — 5 段对齐到整数的刻度"""
+        """生成纵轴标签 — 对齐整数刻度，始终包含首尾"""
         span = y_max - y_min
         if span <= 0:
             return fch.ChartAxis(show_labels=False)
-        step = _nice_interval(span, 5)
-        start = (int(y_min / step) + 1) * step if step > 0 else y_min
-        labels = []
-        v = start
-        while v <= y_max:
+        step = _nice_interval(span, 8)
+        labels: list[fch.ChartAxisLabel] = []
+        labels.append(fch.ChartAxisLabel(
+            value=y_min,
+            label=ft.Text(f"{y_min:.3f}".rstrip("0").rstrip("."), size=10, color=Colors.TEXT_DIM),
+        ))
+        v = (int(y_min / step) + 1) * step if step > 0 else y_min + step
+        while v < y_max:
             labels.append(fch.ChartAxisLabel(
                 value=v,
-                label=ft.Text(f"{v:.2g}", size=10, color=Colors.TEXT_DIM),
+                label=ft.Text(f"{v:.3f}".rstrip("0").rstrip("."), size=10, color=Colors.TEXT_DIM),
             ))
             v += step
-        return fch.ChartAxis(labels=labels, label_size=44)
+        labels.append(fch.ChartAxisLabel(
+            value=y_max,
+            label=ft.Text(f"{y_max:.3f}".rstrip("0").rstrip("."), size=10, color=Colors.TEXT_DIM),
+        ))
+        return fch.ChartAxis(labels=labels, label_size=36)
