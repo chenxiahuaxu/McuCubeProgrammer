@@ -390,18 +390,19 @@ class WaveformDialog:
                 chart.min_y = self._fixed_y_min
                 chart.max_y = self._fixed_y_max
 
-            # data_series 后重设 min/max 防止图表自动缩放
             chart.data_series = [series]
+            # 强制覆盖 min/max（先偏离再回写，确保 Flutter 收到）
+            mx, my = chart.max_x, chart.max_y
+            chart.max_x = mx + 1.0
+            chart.max_y = my
             chart.min_x = chart.min_x
-            chart.max_x = chart.max_x
-            chart.min_y = chart.min_y
             chart.max_y = chart.max_y
+            chart.max_x = mx
+            chart.min_y = chart.min_y
 
             # ── 坐标轴 ──
             chart.bottom_axis = self._build_time_axis(chart.min_x, chart.max_x)
             chart.left_axis = self._build_value_axis(chart.min_y, chart.max_y)
-            chart.horizontal_grid_lines = None
-            chart.vertical_grid_lines = None
 
             chart.update()
 
