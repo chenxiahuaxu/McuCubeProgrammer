@@ -70,6 +70,7 @@ class WaveformDialog:
         self._chart: fch.LineChart | None = None
         self._sec_div_label: ft.Text | None = None
         self._slider: ft.Slider | None = None
+        self._auto_scroll_cb: ft.Checkbox | None = None
         self._refreshing: bool = False
 
     # ── 公开 API ───────────────────────────────────────────
@@ -130,6 +131,7 @@ class WaveformDialog:
         self._chart = None
         self._sec_div_label = None
         self._slider = None
+        self._auto_scroll_cb = None
 
     @property
     def is_open(self) -> bool:
@@ -153,6 +155,7 @@ class WaveformDialog:
             label=t("waveformAutoScroll"), value=True,
             on_change=lambda e: self._set_auto_scroll(e.control.value),
         )
+        self._auto_scroll_cb = auto_scroll_cb
         auto_y_cb = ft.Checkbox(
             label=t("waveformAutoY"), value=self._auto_y,
             disabled=not self._auto_y,  # fixed_y 时禁选
@@ -216,6 +219,20 @@ class WaveformDialog:
         self._auto_y = v
         self._loop.create_task(self._refresh())
 
+    def _disable_auto_scroll(self) -> None:
+        """取消自动滚动并同步复选框"""
+        self._auto_scroll = False
+        if self._auto_scroll_cb:
+            self._auto_scroll_cb.value = False
+            self._auto_scroll_cb.update()
+
+    def _enable_auto_scroll(self) -> None:
+        """恢复自动滚动并同步复选框"""
+        self._auto_scroll = True
+        if self._auto_scroll_cb:
+            self._auto_scroll_cb.value = True
+            self._auto_scroll_cb.update()
+
     def _on_fit(self) -> None:
         history = self._get_history() if self._get_history else []
         if len(history) >= 2:
@@ -228,7 +245,8 @@ class WaveformDialog:
                 if self._sec_div_label:
                     self._sec_div_label.value = f"{best:.2f}s"
                     self._sec_div_label.update()
-                self._loop.create_task(self._refresh())
+        self._enable_auto_scroll()  # Fit 后恢复自动滚动
+        self._loop.create_task(self._refresh())
 
     def _on_scroll(self, e: ft.ScrollEvent) -> None:
         """滚轮缩放 — 保持视图中心不动。"""
@@ -245,8 +263,8 @@ class WaveformDialog:
         else:
             self._sec_div = min(self._max_sec_div, self._sec_div * factor)
 
-        self._auto_scroll = False
         self._scroll_offset = old_center
+        # 滚轮缩放不取消自动滚动，只调整 sec/Div
 
         if self._sec_div_label:
             self._sec_div_label.value = f"{self._sec_div:.2f}s"
@@ -258,7 +276,7 @@ class WaveformDialog:
             self._scroll_offset = float(e.control.value)
         except (ValueError, AttributeError):
             self._scroll_offset = 0.0
-        self._auto_scroll = False
+        self._disable_auto_scroll()
         self._loop.create_task(self._refresh())
 
     # ── 刷新 ───────────────────────────────────────────────
