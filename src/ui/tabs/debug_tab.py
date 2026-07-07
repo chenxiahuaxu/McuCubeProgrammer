@@ -40,6 +40,8 @@ class DebugTab:  # pylint: disable=too-many-instance-attributes
         self._rtos_column: ft.Column | None = None
         self._rtos_auto: bool = False
         self._rtos_history: dict[str, dict] = {}  # name → {history: [(ts, used)], stack_size: int}
+        self._rtos_sort_key: str | None = None
+        self._rtos_sort_ascending: bool = True
 
         # ── 波形弹窗 ──
         self._waveform_dlg: WaveformDialog | None = None
@@ -398,6 +400,39 @@ class DebugTab:  # pylint: disable=too-many-instance-attributes
             self._watch_running = True
             self._loop.create_task(self._watch_loop())
 
+    # ── RTOS 排序 ────────────────────────────────────────
+    @staticmethod
+    def _sort_rtos_threads(threads: list[dict], key: str, ascending: bool) -> list[dict]:
+        """按指定字段排序 RTOS 线程列表。"""
+        if key == "priority":
+            return sorted(threads, key=lambda t: int(t.get("priority", "0")) if str(t.get("priority", "—")).lstrip("-").isdigit() else 0,
+                          reverse=not ascending)
+        if key == "state":
+            _state_order = {"Running": 0, "Ready": 1, "Blocked": 2, "Suspended": 3, "Deleted": 4}
+            return sorted(threads, key=lambda t: _state_order.get(t.get("state", ""), 99), reverse=not ascending)
+        # name
+        return sorted(threads, key=lambda t: t.get("name", "").lower(), reverse=not ascending)
+
+    def _make_rtos_header(self, label: str, key: str, width: int) -> ft.Control:
+        """构建可点击排序的列标题。"""
+        is_active = self._rtos_sort_key == key
+        arrow = " ▲" if (is_active and self._rtos_sort_ascending) else (" ▼" if is_active else "")
+        display = label + arrow
+        return ft.Container(
+            content=ft.Text(display, width=width, size=Font.Size.CAPTION, weight=600, color=Colors.ACCENT_COPPER if is_active else Colors.TEXT_SECONDARY),
+            on_click=lambda _: self._on_rtos_sort(key),
+            ink=True,
+        )
+
+    def _on_rtos_sort(self, key: str) -> None:
+        """处理列标题点击排序切换。"""
+        if self._rtos_sort_key == key:
+            self._rtos_sort_ascending = not self._rtos_sort_ascending
+        else:
+            self._rtos_sort_key = key
+            self._rtos_sort_ascending = True
+        self._refresh_rtos()
+
     # ── RTOS 线程 ────────────────────────────────────────
     def _refresh_rtos(self) -> None:
         if not self._backend or not self._backend.is_connected:
@@ -405,14 +440,16 @@ class DebugTab:  # pylint: disable=too-many-instance-attributes
         try:
             elf = self._elf_full_path
             threads = self._backend.get_rtos_threads(elf)
+            if self._rtos_sort_key and threads:
+                threads = self._sort_rtos_threads(threads, self._rtos_sort_key, self._rtos_sort_ascending)
             self._rtos_column.controls.clear()
             if not threads:
                 self._rtos_column.controls.append(ft.Text(t("debugRtosNone"), size=Font.Size.CAPTION, color=Colors.TEXT_DIM))
             else:
                 hdr = ft.Row(controls=[
-                    ft.Text(t("debugWatchName"), width=140, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
-                    ft.Text("Prio", width=50, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
-                    ft.Text("State", width=80, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
+                    self._make_rtos_header(t("debugWatchName"), "name", 140),
+                    self._make_rtos_header("Prio", "priority", 50),
+                    self._make_rtos_header("State", "state", 80),
                     ft.Text("Stack", width=100, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
                     ft.Text("TCB", width=100, size=Font.Size.CAPTION, weight=600, color=Colors.TEXT_SECONDARY),
                 ], spacing=Spacing.SM)
