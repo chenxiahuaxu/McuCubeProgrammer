@@ -34,6 +34,8 @@ class DebugTab:
         self._trend_canvas: cv.Canvas | None = None
         self._trend_info: ft.Text | None = None
         self._trend_scroll_row: ft.Row | None = None
+        self._trend_locked: bool = True  # 默认锁定 → 自动滚到最新
+        self._trend_lock_btn: ft.IconButton | None = None
         self._add_addr: ft.TextField | None = None
         self._add_size: ft.Dropdown | None = None
         self._add_name: ft.TextField | None = None
@@ -237,12 +239,23 @@ class DebugTab:
             self._trend_scroll_row,
         ], spacing=Spacing.XS, scroll=ft.ScrollMode.AUTO, width=560, height=400)
 
+        self._trend_locked = True
+        self._trend_lock_btn = ft.IconButton(
+            icon=ft.Icons.LOCK, icon_size=18,
+            icon_color=Colors.ACCENT_COPPER,
+            tooltip="锁定 → 自动跟踪最新",
+            on_click=lambda _: self._toggle_lock(),
+        )
+
         self._trend_dlg = ft.AlertDialog(
             modal=True,
             open=True,
             title=ft.Text(f"Waveform — {name}"),
             content=content,
-            actions=[ft.ElevatedButton(content=ft.Text("Close"), on_click=lambda _: self._close_trend())],
+            actions=[
+                self._trend_lock_btn,
+                ft.ElevatedButton(content=ft.Text("Close"), on_click=lambda _: self._close_trend()),
+            ],
         )
         self._page.show_dialog(self._trend_dlg)
         # 首次填充数据（必须在 dialog 添加到 page 之后）
@@ -299,8 +312,8 @@ class DebugTab:
                 # 5. 连线
                 shapes.append(cv.Points(points=pts, point_mode=cv.PointMode.POLYGON,
                     paint=ft.Paint(color=GREEN, stroke_width=2, anti_alias=True)))
-                # 6. 圆点（每 3 个）
-                for i in range(0, n, 3):
+                # 6. 圆点（每个数据点）
+                for i in range(0, n):
                     px, py = pts[i]
                     shapes.append(cv.Circle(px, py, 3,
                         paint=ft.Paint(color=GREEN, style=ft.PaintingStyle.FILL)))
@@ -312,8 +325,8 @@ class DebugTab:
         self._trend_canvas.shapes = shapes
         self._trend_canvas.width = max(200, STEP * (len(vals) - 1) + 2 * PAD) if vals else 200
         self._trend_canvas.update()
-        # 滚到最新
-        if self._trend_scroll_row and vals:
+        # 滚到最新（仅锁定状态）
+        if self._trend_scroll_row and vals and self._trend_locked:
             await self._trend_scroll_row.scroll_to(offset=-1, duration=0)
         if self._trend_info:
             if not vals:
@@ -329,9 +342,17 @@ class DebugTab:
             self._trend_dlg = None
         self._trend_canvas = None
         self._trend_info = None
-        self._trend_scroll_row = None
+        self._trend_lock_btn = None
         if self._page:
             self._page.update()
+
+    def _toggle_lock(self) -> None:
+        """切换锁定状态：锁定→自动跟踪最新数据，解锁→停留在当前视图。"""
+        self._trend_locked = not self._trend_locked
+        if self._trend_lock_btn:
+            self._trend_lock_btn.icon = ft.Icons.LOCK if self._trend_locked else ft.Icons.LOCK_OPEN
+            self._trend_lock_btn.tooltip = "锁定 → 自动跟踪最新" if self._trend_locked else "解锁 → 自由浏览历史"
+            self._trend_lock_btn.update()
 
     # ── ELF 符号加载 ─────────────────────────────────────
     def _pick_elf(self) -> None:
