@@ -129,5 +129,11 @@
   "debugRtosTitle": "RTOS Tasks",
   "debugRtosNone": "No RTOS detected or not supported",
   "debugRefresh": "Refresh",
-  "debugAuto": "Auto"
+  "debugAuto": "Auto",
+  "waveformTitle": "Waveform — {name}",
+  "waveformSecDiv": "sec/Div",
+  "waveformAutoScroll": "Auto-scroll",
+  "waveformAutoY": "Auto Y",
+  "waveformFit": "Fit",
+  "waveformClose": "Close"
 }

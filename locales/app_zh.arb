@@ -131,5 +131,11 @@
   "debugRtosNone": "未检测到 RTOS",
   "debugRtosHint": "请确保编译时保留了 FreeRTOS 调试符号。",
   "debugRefresh": "刷新",
-  "debugAuto": "自动"
+  "debugAuto": "自动",
+  "waveformTitle": "波形 — {name}",
+  "waveformSecDiv": "秒/格",
+  "waveformAutoScroll": "自动滚动",
+  "waveformAutoY": "自动Y轴",
+  "waveformFit": "自适应",
+  "waveformClose": "关闭"
 }
